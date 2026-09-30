@@ -121,26 +121,27 @@ export function QuotesPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white p-7 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-3">
+      {/* Header - Compact */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
               Quotations Comparison Hub
             </h1>
             <Badge variant="warning" size="sm">18 Active Quotes</Badge>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-[11px] text-slate-500 mt-0.5">
             Review live generated quotes, client comparative rate schedules, and pending policy issuances.
           </p>
         </div>
 
         <Button
           variant="primary"
-          size="md"
+          size="sm"
           icon={Plus}
           onClick={() => setActiveTab('wizard')}
+          className="py-1.5 text-xs font-bold shrink-0"
         >
           New Multi-Company Quote
         </Button>

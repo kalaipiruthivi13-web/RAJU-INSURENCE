@@ -46,7 +46,6 @@ export function RenewalsPage() {
 
   const filteredPolicies = enrichedPolicies.filter((p) => {
     if (activeTabFilter === '30DAYS' && !p.isDueWithin30) return false;
-    if (activeTabFilter === 'PORTING' && p.renewableVia !== 'Porting') return false;
     if (activeTabFilter === 'DIRECT' && p.renewableVia !== 'Direct') return false;
 
     if (globalSearch) {
@@ -66,7 +65,7 @@ export function RenewalsPage() {
     const nextYear = new Date();
     nextYear.setFullYear(nextYear.getFullYear() + 1);
     setRenewalForm({
-      mode: policy.renewableVia === 'Porting' ? 'Port' : 'Direct',
+      mode: 'Direct',
       targetCompanyId: policy.companyId,
       newExpiryDate: nextYear.toISOString().split('T')[0]
     });
@@ -78,7 +77,7 @@ export function RenewalsPage() {
 
     renewPolicy(selectedPolicyForRenew.id, {
       newExpiryDate: renewalForm.newExpiryDate,
-      newCompanyId: renewalForm.mode === 'Port' ? renewalForm.targetCompanyId : selectedPolicyForRenew.companyId
+      newCompanyId: renewalForm.targetCompanyId || selectedPolicyForRenew.companyId
     });
     setSelectedPolicyForRenew(null);
   };
@@ -110,15 +109,8 @@ export function RenewalsPage() {
       key: 'companyName',
       label: 'Current Insurer',
       sortable: true,
-      render: (val, row) => (
-        <div>
-          <span className="font-semibold text-slate-800">{val}</span>
-          {row.renewableVia === 'Porting' && (
-            <span className="block text-[10px] text-purple-700 font-bold">
-              Porting to: {row.portTargetCompany || 'Alternative'}
-            </span>
-          )}
-        </div>
+      render: (val) => (
+        <span className="font-semibold text-slate-800">{val}</span>
       )
     },
     {
@@ -183,27 +175,26 @@ export function RenewalsPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="bg-white p-7 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-3">
+      {/* Page Header - Compact */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
               Renewal Tracking & 30-Day Alert System
             </h1>
             <Badge variant="warning" size="sm">Auto-Reminder Engine</Badge>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-[11px] text-slate-500 mt-0.5">
             Automated 30-day early alert triggers ensuring zero policy lapse and maximum client retention.
           </p>
         </div>
 
         {/* Tab Filters */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl self-start md:self-auto">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start md:self-auto">
           {[
             { id: '30DAYS', label: '30-Day Urgent Alerts' },
             { id: 'DIRECT', label: 'Direct Renewals' },
-            { id: 'PORTING', label: 'Porting Requests' },
             { id: 'ALL', label: 'All Records' },
           ].map((tab) => (
             <button
@@ -222,22 +213,22 @@ export function RenewalsPage() {
         </div>
       </div>
 
-      {/* Dual-Color Strategy Banner */}
-      <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-cyan-700 text-white rounded-2xl p-6 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center backdrop-blur-xs shadow-xs">
-            <Calendar className="w-6 h-6 text-cyan-200" />
+      {/* Dual-Color Strategy Banner - Compact */}
+      <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-cyan-700 text-white rounded-xl p-3 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center backdrop-blur-xs shadow-2xs shrink-0">
+            <Calendar className="w-4 h-4 text-cyan-200" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white">Standard 30-Day Retention Logic Active</h3>
-            <p className="text-xs text-blue-100/90 mt-0.5">
+            <h3 className="text-xs font-bold text-white">Standard 30-Day Retention Logic Active</h3>
+            <p className="text-[11px] text-blue-100/90 mt-0.5">
               WhatsApp & SMS templates auto-include Policy Number, Expiry Date, and NCB discount benefits to retain clients.
             </p>
           </div>
         </div>
 
-        <div className="text-xs bg-white/15 px-4 py-2 rounded-xl border border-white/20 font-bold text-cyan-100 backdrop-blur-xs">
-          Retained this month: <strong className="text-emerald-300">92% Retention Rate</strong>
+        <div className="text-xs bg-white/15 px-3 py-1.5 rounded-lg border border-white/20 font-bold text-cyan-100 backdrop-blur-xs shrink-0">
+          Retained this month: <strong className="text-emerald-300">92% Rate</strong>
         </div>
       </div>
 
@@ -269,65 +260,33 @@ export function RenewalsPage() {
         <form onSubmit={handleExecuteRenewal} className="space-y-4 text-xs">
           <div>
             <label className="block font-semibold text-slate-700 mb-1.5">
-              Renewal Mode
+              Insurance Carrier / Partner Company *
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label
-                className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer ${
-                  renewalForm.mode === 'Direct'
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-900 font-bold shadow-2xs'
-                    : 'border-slate-200 text-slate-600'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="renewalMode"
-                  checked={renewalForm.mode === 'Direct'}
-                  onChange={() => setRenewalForm({ ...renewalForm, mode: 'Direct' })}
-                  className="sr-only"
-                />
-                <FileCheck className="w-4 h-4 text-indigo-600" />
-                Direct Renewal (Same Company)
-              </label>
-
-              <label
-                className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer ${
-                  renewalForm.mode === 'Port'
-                    ? 'border-purple-600 bg-purple-50 text-purple-900 font-bold shadow-2xs'
-                    : 'border-slate-200 text-slate-600'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="renewalMode"
-                  checked={renewalForm.mode === 'Port'}
-                  onChange={() => setRenewalForm({ ...renewalForm, mode: 'Port' })}
-                  className="sr-only"
-                />
-                <ArrowRightLeft className="w-4 h-4 text-purple-600" />
-                Port to Alternative Insurer
-              </label>
-            </div>
+            <select
+              value={renewalForm.targetCompanyId}
+              onChange={(e) => setRenewalForm({ ...renewalForm, targetCompanyId: e.target.value })}
+              className="w-full px-3.5 py-2 border rounded-xl bg-white focus:ring-2 focus:ring-[#2563EB] text-xs font-semibold text-slate-900"
+            >
+              {partners.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.claimRatio} Claim Ratio)
+                </option>
+              ))}
+            </select>
           </div>
 
-          {renewalForm.mode === 'Port' && (
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1.5">
-                Target Insurance Carrier *
-              </label>
-              <select
-                value={renewalForm.targetCompanyId}
-                onChange={(e) => setRenewalForm({ ...renewalForm, targetCompanyId: e.target.value })}
-                className="w-full px-3.5 py-2 border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500"
-              >
-                {partners.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.claimRatio} Claim Ratio)
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">
+              New Policy Expiry Date (1 Year Extension) *
+            </label>
+            <input
+              type="date"
+              required
+              value={renewalForm.newExpiryDate}
+              onChange={(e) => setRenewalForm({ ...renewalForm, newExpiryDate: e.target.value })}
+              className="w-full px-3.5 py-2 border rounded-xl focus:ring-2 focus:ring-[#2563EB] text-xs text-slate-900 font-semibold"
+            />
+          </div>
 
           <div>
             <label className="block font-semibold text-slate-700 mb-1.5">

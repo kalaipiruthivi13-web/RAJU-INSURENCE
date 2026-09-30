@@ -4,7 +4,11 @@ import {
   Search,
   Bell,
   Plus,
-  X
+  X,
+  ChevronDown,
+  LogOut,
+  ShieldCheck,
+  User
 } from 'lucide-react';
 import { useAppData } from '../../context/AppDataContext';
 import Button from '../ui/Button';
@@ -15,10 +19,13 @@ export function Header({ setMobileOpen }) {
     setGlobalSearch,
     setActiveTab,
     notifications,
-    metrics
+    metrics,
+    currentUser,
+    logout
   } = useAppData();
 
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-[#E2E8F0] shadow-2xs">
@@ -135,14 +142,93 @@ export function Header({ setMobileOpen }) {
             )}
           </div>
 
-          {/* User Profile Avatar */}
-          <div className="flex items-center gap-2 pl-2 border-l border-[#E2E8F0]">
-            <div className="w-8 h-8 rounded-lg bg-[#2563EB] text-white flex items-center justify-center text-xs font-bold shadow-xs">
-              RR
-            </div>
-            <span className="text-xs font-bold text-slate-800 hidden md:inline-block">
-              Rajkumar
-            </span>
+          {/* User Profile Avatar with Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              className="flex items-center gap-2 pl-2 border-l border-[#E2E8F0] hover:opacity-90 transition-opacity cursor-pointer text-left"
+              aria-label="User profile menu"
+            >
+              <div className={`w-8 h-8 rounded-lg ${currentUser?.avatarBg || 'bg-[#2563EB]'} text-white flex items-center justify-center text-xs font-bold shadow-xs shrink-0`}>
+                {currentUser?.initials || 'RR'}
+              </div>
+              <div className="hidden md:block">
+                <p className="text-xs font-bold text-slate-800 leading-tight">
+                  {currentUser?.name || 'R. Rajkumar'}
+                </p>
+                <p className="text-[10px] text-slate-400 leading-none">
+                  {currentUser?.roleTitle || 'Principal Broker'}
+                </p>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
+            </button>
+
+            {showProfileMenu && (
+              <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 animate-in fade-in zoom-in-95 text-xs">
+                {/* Profile Card Header */}
+                <div className="p-3.5 border-b border-slate-100 bg-slate-50">
+                  <p className="font-bold text-slate-900 text-sm leading-tight">{currentUser?.name}</p>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">{currentUser?.roleTitle}</p>
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${currentUser?.role === 'ADMIN' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}`}>
+                      {currentUser?.role === 'ADMIN' ? 'Admin Access' : 'User Access'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">{currentUser?.license}</span>
+                  </div>
+                </div>
+
+                {/* Action Items */}
+                <div className="p-1 space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      setActiveTab('dashboard');
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer text-left"
+                  >
+                    <User className="w-4 h-4 text-slate-400" />
+                    <span className="font-medium">Profile</span>
+                  </button>
+
+                  {/* Permissions & Roles - Admin only */}
+                  {currentUser?.role === 'ADMIN' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        setActiveTab('settings-permissions');
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                        <span className="font-medium">Permissions & Roles</span>
+                      </div>
+                      <span className="text-[9px] font-bold bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded border border-indigo-200">
+                        Admin
+                      </span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Logout */}
+                <div className="p-1 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      logout();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left font-bold"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

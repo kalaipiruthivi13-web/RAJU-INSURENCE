@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileCheck2,
   Plus,
@@ -19,8 +19,14 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 
 export function ApplicationsPage() {
-  const { setActiveTab } = useAppData();
+  const { setActiveTab, activeTab } = useAppData();
   const [subTab, setSubTab] = useState('NEW'); // 'NEW' | 'DRAFTS' | 'PENDING' | 'COMPLETED'
+
+  useEffect(() => {
+    if (activeTab === 'motor-insurance' || activeTab === 'health-insurance' || activeTab === 'wizard' || activeTab === 'applications') {
+      setSubTab('NEW');
+    }
+  }, [activeTab]);
 
   // Mock application records
   const mockApplications = [

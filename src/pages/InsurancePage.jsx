@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import Step1CustomerKYC from '../components/insurance/Step1CustomerKYC';
 import Step2NewVehicle from '../components/insurance/Step2NewVehicle';
@@ -31,16 +31,49 @@ import {
 import Button from '../components/ui/Button';
 
 export function InsurancePage() {
-  const { partners, addPolicy, setActiveTab } = useAppData();
+  const { partners, addPolicy, setActiveTab, activeTab } = useAppData();
 
   // Funnel Navigation State:
   // 'CATEGORY' -> 'MOTOR_PRODUCT' -> 'MOTOR_INTENT' -> 'RENEWAL_LOOKUP' -> 'WIZARD'
-  const [funnelStep, setFunnelStep] = useState('CATEGORY');
-  const [insuranceCategory, setInsuranceCategory] = useState('MOTOR'); // 'MOTOR' | 'HEALTH'
-  const [motorProduct, setMotorProduct] = useState('CAR'); // 'CAR' | 'TWO_WHEELER'
+  const [funnelStep, setFunnelStep] = useState(() => {
+    if (activeTab === 'motor-insurance' || activeTab === 'motor-car' || activeTab === 'motor-bike') return 'MOTOR_PRODUCT';
+    if (activeTab === 'health-insurance') return 'WIZARD';
+    return 'CATEGORY';
+  });
+  const [insuranceCategory, setInsuranceCategory] = useState(() => {
+    if (activeTab === 'health-insurance') return 'HEALTH';
+    return 'MOTOR';
+  });
+  const [motorProduct, setMotorProduct] = useState(() => {
+    if (activeTab === 'motor-bike') return 'TWO_WHEELER';
+    return 'CAR';
+  });
   const [motorIntent, setMotorIntent] = useState('NEW'); // 'NEW' | 'RENEWAL'
+  const [healthScheme, setHealthScheme] = useState('INDIVIDUAL'); // 'INDIVIDUAL' | 'FAMILY' | 'SENIOR_CITIZEN'
 
   const [currentStep, setCurrentStep] = useState(1);
+
+  // Sync with activeTab when user clicks sub-menu items
+  useEffect(() => {
+    if (activeTab === 'motor-insurance') {
+      setInsuranceCategory('MOTOR');
+      setFunnelStep('MOTOR_PRODUCT'); // Directly opens Car or Bike selection tabs
+    } else if (activeTab === 'motor-car') {
+      setInsuranceCategory('MOTOR');
+      setMotorProduct('CAR');
+      setFunnelStep('MOTOR_INTENT');
+    } else if (activeTab === 'motor-bike') {
+      setInsuranceCategory('MOTOR');
+      setMotorProduct('TWO_WHEELER');
+      setFunnelStep('MOTOR_INTENT');
+    } else if (activeTab === 'health-insurance') {
+      setInsuranceCategory('HEALTH');
+      setFunnelStep('WIZARD'); // Directly opens the Health Insurance Portal
+      setCurrentStep(1);
+    } else if (activeTab === 'wizard' || activeTab === 'applications') {
+      setFunnelStep('CATEGORY');
+    }
+  }, [activeTab]);
 
   // Renewal Pre-Fill Lookup Data
   const [renewalData, setRenewalData] = useState({
@@ -269,111 +302,251 @@ export function InsurancePage() {
   };
 
   // ==========================================
-  // FUNNEL SCREEN 1: Category Selection
+  // ==========================================
+  // FUNNEL SCREEN 1: Select Insurance Type
+  // Motor Insurance: Car, Two Wheeler
+  // Health & Mediclaim: Individual, Family, Senior Citizen
   // ==========================================
   if (funnelStep === 'CATEGORY') {
     return (
-      <div className="space-y-6 animate-in fade-in duration-200">
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-[#E2E8F0] shadow-xs">
+      <div className="space-y-4 animate-in fade-in duration-200">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-[#E2E8F0] shadow-2xs">
           <div className="max-w-2xl">
             <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight">
-                New Insurance Application
+              <h1 className="text-base sm:text-lg font-black text-[#0F172A] tracking-tight">
+                Select Insurance Type
               </h1>
-              <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-[#2563EB] text-white shadow-xs">
-                MNC Engine
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#2563EB] text-white shadow-xs">
+                MNC Underwriting
               </span>
             </div>
-            <p className="text-sm font-semibold text-slate-600 mt-1">
-              What type of insurance do you want to create?
+            <p className="text-xs text-slate-500">
+              Choose policy category and specific product line to initiate customer application docket
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 max-w-4xl">
-            {/* Motor Insurance Card */}
-            <div className="p-6 sm:p-7 rounded-2xl border-2 border-slate-200 hover:border-[#2563EB] hover:shadow-lg transition-all flex flex-col justify-between bg-white group">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            {/* 1. Motor Insurance Card */}
+            <div className="p-4 sm:p-4.5 rounded-xl border-2 border-slate-200 hover:border-[#2563EB] transition-all bg-white flex flex-col justify-between shadow-2xs">
               <div>
-                <div className="w-16 h-16 rounded-2xl bg-blue-50 text-3xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-xs border border-blue-100">
-                  🚗
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-2xl flex items-center justify-center border border-blue-100 shrink-0">
+                    🚗
+                  </div>
+                  <div>
+                    <h2 className="text-sm sm:text-base font-black text-[#0F172A]">Motor Insurance</h2>
+                    <p className="text-[10px] sm:text-[11px] font-bold text-[#2563EB]">Vehicle & Fleet Policies</p>
+                  </div>
                 </div>
-                <h2 className="text-xl font-black text-[#0F172A]">Motor Insurance</h2>
-                <p className="text-xs font-bold text-[#2563EB] mt-0.5">Vehicle / Motor policies</p>
-                <p className="text-xs text-slate-500 mt-2.5 leading-relaxed">
-                  Comprehensive & Third-Party policies for Private Cars, Two-Wheelers, and Commercial Fleets with instant IDV and NCB calculations.
+                <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                  Comprehensive & Third-Party covers with auto IDV depreciation, NCB discount protection and instant addon riders.
                 </p>
 
-                <div className="mt-5 space-y-2 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                  <div className="flex items-center gap-2 font-medium">
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Private Cars, Two-Wheelers & Fleets</span>
-                  </div>
-                  <div className="flex items-center gap-2 font-medium">
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Auto IDV Depreciation Grid (Up to 50%)</span>
-                  </div>
-                  <div className="flex items-center gap-2 font-medium">
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Zero Dep, Engine Protect, RSA & RTI Add-ons</span>
-                  </div>
-                </div>
-              </div>
+                {/* Sub-Products: Car & Two Wheeler */}
+                <div className="space-y-2 pt-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                    Select Motor Product:
+                  </span>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInsuranceCategory('MOTOR');
+                      setMotorProduct('CAR');
+                      setFunnelStep('MOTOR_INTENT');
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 flex items-center justify-between text-left transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-blue-100 text-base flex items-center justify-center shrink-0">
+                        🚗
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-slate-900 group-hover:text-blue-700">Car</h3>
+                        <p className="text-[10px] text-slate-500">Private Cars, Zero Dep, 3rd Party</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
 
-              <div className="pt-6 mt-6 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInsuranceCategory('MOTOR');
-                    setFunnelStep('MOTOR_PRODUCT');
-                  }}
-                  className="w-full py-3 px-4 rounded-xl font-black text-xs text-white bg-[#2563EB] hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Start Application</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInsuranceCategory('MOTOR');
+                      setMotorProduct('TWO_WHEELER');
+                      setFunnelStep('MOTOR_INTENT');
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 flex items-center justify-between text-left transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-blue-100 text-base flex items-center justify-center shrink-0">
+                        🏍️
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-slate-900 group-hover:text-blue-700">Two Wheeler</h3>
+                        <p className="text-[10px] text-slate-500">Motorcycles, Scooters & EV 2W</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Health Insurance Card */}
-            <div className="p-6 sm:p-7 rounded-2xl border-2 border-slate-200 hover:border-teal-600 hover:shadow-lg transition-all flex flex-col justify-between bg-white group">
+            {/* 2. Health & Mediclaim Card */}
+            <div className="p-4 sm:p-4.5 rounded-xl border-2 border-slate-200 hover:border-teal-600 transition-all bg-white flex flex-col justify-between shadow-2xs">
               <div>
-                <div className="w-16 h-16 rounded-2xl bg-teal-50 text-3xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-xs border border-teal-100">
-                  🏥
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="w-9 h-9 rounded-xl bg-teal-50 text-2xl flex items-center justify-center border border-teal-100 shrink-0">
+                    🏥
+                  </div>
+                  <div>
+                    <h2 className="text-sm sm:text-base font-black text-[#0F172A]">Health & Mediclaim</h2>
+                    <p className="text-[10px] sm:text-[11px] font-bold text-teal-700">Individual & Family Health</p>
+                  </div>
                 </div>
-                <h2 className="text-xl font-black text-[#0F172A]">Health Insurance</h2>
-                <p className="text-xs font-bold text-teal-700 mt-0.5">Individual / Family Health policies</p>
-                <p className="text-xs text-slate-500 mt-2.5 leading-relaxed">
-                  Individual, Family Floater & Senior Citizen Mediclaim covers with dynamic demographic tracking, auto BMI, and cashless hospital network comparison.
+                <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                  Cashless hospitalization across 15,000+ network hospitals, PED coverage, auto BMI calculation and maternity benefits.
                 </p>
 
-                <div className="mt-5 space-y-2 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                  <div className="flex items-center gap-2 font-medium">
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Individual & Family Floater Schemes</span>
-                  </div>
-                  <div className="flex items-center gap-2 font-medium">
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Auto Age & BMI Calculation per Member</span>
-                  </div>
-                  <div className="flex items-center gap-2 font-medium">
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Pre-Existing Disease (PED) & Maternity Riders</span>
-                  </div>
-                </div>
-              </div>
+                {/* Sub-Products: Individual, Family, Senior Citizen */}
+                <div className="space-y-2 pt-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                    Select Health Scheme:
+                  </span>
 
-              <div className="pt-6 mt-6 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInsuranceCategory('HEALTH');
-                    setFunnelStep('WIZARD');
-                    setCurrentStep(1);
-                  }}
-                  className="w-full py-3 px-4 rounded-xl font-black text-xs text-white bg-teal-600 hover:bg-teal-700 transition-all shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Start Application</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInsuranceCategory('HEALTH');
+                      setHealthScheme('INDIVIDUAL');
+                      setHealthMembers([
+                        {
+                          id: 'MEM-01',
+                          relation: 'SELF',
+                          memberName: 'Senthil Nathan K.',
+                          dob: '1985-06-15',
+                          age: 39,
+                          gender: 'MALE',
+                          heightCm: 175,
+                          weightKg: 72,
+                          bmi: 23.5,
+                          occupation: 'SALARIED'
+                        }
+                      ]);
+                      setFunnelStep('WIZARD');
+                      setCurrentStep(1);
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 flex items-center justify-between text-left transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-teal-100 text-base flex items-center justify-center shrink-0">
+                        👤
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-slate-900 group-hover:text-teal-700">Individual</h3>
+                        <p className="text-[10px] text-slate-500">Single individual policyholder cover</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-teal-600 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInsuranceCategory('HEALTH');
+                      setHealthScheme('FAMILY');
+                      setHealthMembers([
+                        {
+                          id: 'MEM-01',
+                          relation: 'SELF',
+                          memberName: 'Senthil Nathan K.',
+                          dob: '1985-06-15',
+                          age: 39,
+                          gender: 'MALE',
+                          heightCm: 175,
+                          weightKg: 72,
+                          bmi: 23.5,
+                          occupation: 'SALARIED'
+                        },
+                        {
+                          id: 'MEM-02',
+                          relation: 'SPOUSE',
+                          memberName: 'Meena Senthil',
+                          dob: '1988-09-22',
+                          age: 36,
+                          gender: 'FEMALE',
+                          heightCm: 162,
+                          weightKg: 58,
+                          bmi: 22.1,
+                          occupation: 'HOMEMAKER'
+                        },
+                        {
+                          id: 'MEM-03',
+                          relation: 'SON',
+                          memberName: 'Aarav Senthil',
+                          dob: '2015-04-10',
+                          age: 9,
+                          gender: 'MALE',
+                          heightCm: 130,
+                          weightKg: 28,
+                          bmi: 16.5,
+                          occupation: 'STUDENT'
+                        }
+                      ]);
+                      setFunnelStep('WIZARD');
+                      setCurrentStep(1);
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 flex items-center justify-between text-left transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-teal-100 text-base flex items-center justify-center shrink-0">
+                        👨‍👩‍👧‍👦
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-slate-900 group-hover:text-teal-700">Family</h3>
+                        <p className="text-[10px] text-slate-500">Self, Spouse & Kids shared floater</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-teal-600 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInsuranceCategory('HEALTH');
+                      setHealthScheme('SENIOR_CITIZEN');
+                      setHealthMembers([
+                        {
+                          id: 'MEM-01',
+                          relation: 'FATHER',
+                          memberName: 'K. Krishnamoorthy',
+                          dob: '1958-03-12',
+                          age: 66,
+                          gender: 'MALE',
+                          heightCm: 168,
+                          weightKg: 68,
+                          bmi: 24.1,
+                          occupation: 'RETIRED'
+                        }
+                      ]);
+                      setFunnelStep('WIZARD');
+                      setCurrentStep(1);
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 flex items-center justify-between text-left transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-teal-100 text-base flex items-center justify-center shrink-0">
+                        👴👵
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-slate-900 group-hover:text-teal-700">Senior Citizen</h3>
+                        <p className="text-[10px] text-slate-500">Parents 60+ with AYUSH & low PED wait</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-teal-600 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -410,6 +583,32 @@ export function InsurancePage() {
             >
               Back to Categories
             </Button>
+          </div>
+
+          {/* Quick Vehicle Tabs: Car or Bike */}
+          <div className="flex items-center gap-2 mt-5 p-1.5 bg-slate-100 rounded-2xl max-w-md">
+            <button
+              type="button"
+              onClick={() => {
+                setMotorProduct('CAR');
+                setFunnelStep('MOTOR_INTENT');
+              }}
+              className="flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 bg-white text-[#2563EB] shadow-xs cursor-pointer hover:bg-blue-50 border border-blue-100"
+            >
+              <span className="text-base">🚗</span>
+              <span>Car Insurance Tab</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMotorProduct('TWO_WHEELER');
+                setFunnelStep('MOTOR_INTENT');
+              }}
+              className="flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 bg-white text-[#0F172A] shadow-xs cursor-pointer hover:bg-slate-50 border border-slate-200"
+            >
+              <span className="text-base">🏍️</span>
+              <span>Bike / Two Wheeler Tab</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 max-w-4xl">
@@ -872,7 +1071,7 @@ export function InsurancePage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight">
-                New Insurance Application
+                {insuranceCategory === 'HEALTH' ? 'Health Insurance Application Portal' : 'New Insurance Application'}
               </h1>
               <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-[#2563EB] text-white shadow-xs">
                 MNC Engine
@@ -880,15 +1079,17 @@ export function InsurancePage() {
               <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
                 insuranceCategory === 'MOTOR'
                   ? 'bg-blue-50 text-[#2563EB] border border-blue-200'
-                  : 'bg-teal-50 text-teal-700 border border-teal-200'
+                  : 'bg-teal-50 text-teal-800 border border-teal-300 font-black'
               }`}>
                 {insuranceCategory === 'MOTOR'
                   ? `${motorProduct === 'CAR' ? '🚗 Car' : '🏍️ Two Wheeler'} (${motorIntent === 'NEW' ? 'New Vehicle' : 'Renewal'})`
-                  : '🏥 Health Insurance'}
+                  : '🏥 Health & Mediclaim Portal'}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Complete the 8-step application to generate quotes, verify underwriting parameters, and bind policy.
+              {insuranceCategory === 'HEALTH'
+                ? 'Individual, Family Floater & Senior Citizen Mediclaim underwriting, auto-BMI calculation, and partner hospital comparison.'
+                : 'Complete the 8-step application to generate quotes, verify underwriting parameters, and bind policy.'}
             </p>
           </div>
 

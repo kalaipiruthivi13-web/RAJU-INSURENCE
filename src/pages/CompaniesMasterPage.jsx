@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   FolderArchive,
@@ -8,7 +8,8 @@ import {
   ShieldCheck,
   Search,
   Filter,
-  FileText
+  FileText,
+  Sliders
 } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import DataTable from '../components/ui/DataTable';
@@ -16,11 +17,18 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 
 export function CompaniesMasterPage({ initialTab = 'companies' }) {
-  const { partners, repositoryDocs, globalSearch } = useAppData();
-  const [activeSection, setActiveSection] = useState(initialTab); // 'companies' | 'repository'
+  const { partners, repositoryDocs, products, globalSearch, setActiveTab } = useAppData();
+  const [activeSection, setActiveSection] = useState(initialTab); // 'companies' | 'products' | 'repository'
   const [filterType, setFilterType] = useState('ALL');
   const [viewMode, setViewMode] = useState('GRID'); // 'GRID' | 'TABLE'
   const [docCategory, setDocCategory] = useState('ALL');
+  const [productCategory, setProductCategory] = useState('ALL');
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveSection(initialTab);
+    }
+  }, [initialTab]);
 
   // Filter partners
   const filteredPartners = partners.filter((p) => {
@@ -53,6 +61,121 @@ export function CompaniesMasterPage({ initialTab = 'companies' }) {
     }
     return true;
   });
+
+  // Filter products
+  const filteredProducts = (products || []).filter((prod) => {
+    if (productCategory !== 'ALL' && prod.type !== productCategory) return false;
+    if (globalSearch) {
+      const term = globalSearch.toLowerCase();
+      return (
+        prod.name.toLowerCase().includes(term) ||
+        prod.code.toLowerCase().includes(term) ||
+        prod.category.toLowerCase().includes(term) ||
+        prod.underwriters?.some((u) => u.toLowerCase().includes(term))
+      );
+    }
+    return true;
+  });
+
+  const productColumns = [
+    {
+      key: 'name',
+      label: 'Insurance Plan / Product Line',
+      sortable: true,
+      render: (val, row) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center shrink-0">
+            <Sliders className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="font-bold text-slate-900 leading-tight">{val}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="font-mono text-[10px] font-bold text-indigo-800 bg-indigo-50 border border-indigo-100 px-1.5 py-0.2 rounded">
+                {row.code}
+              </span>
+              <span className="text-[10px] text-slate-400">
+                {row.irdaApprovalCode}
+              </span>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'category',
+      label: 'Segment',
+      sortable: true,
+      render: (val) => (
+        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+          {val}
+        </span>
+      )
+    },
+    {
+      key: 'underwriters',
+      label: 'Partner Underwriters',
+      render: (val) => (
+        <div className="flex flex-wrap gap-1 max-w-[220px]">
+          {val?.map((u, i) => (
+            <span
+              key={i}
+              className="text-[10px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-100 px-1.5 py-0.5 rounded"
+            >
+              {u}
+            </span>
+          ))}
+        </div>
+      )
+    },
+    {
+      key: 'tenure',
+      label: 'Coverage Term & Deductible',
+      render: (val, row) => (
+        <div>
+          <p className="text-xs font-semibold text-slate-800">{val}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">{row.standardDeductible}</p>
+        </div>
+      )
+    },
+    {
+      key: 'basePremium',
+      label: 'Standard Tariff',
+      sortable: true,
+      render: (val) => <span className="font-bold text-slate-900 text-xs">{val}</span>
+    },
+    {
+      key: 'commissionRate',
+      label: 'Broker Payout',
+      sortable: true,
+      render: (val) => (
+        <span className="font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-xs">
+          {val}
+        </span>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Action',
+      render: (_, row) => (
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setActiveTab('quotes')}
+          >
+            Quote
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setActiveTab('applications')}
+          >
+            Apply
+          </Button>
+        </div>
+      )
+    }
+  ];
 
   const partnerColumns = [
     {
@@ -196,21 +319,29 @@ export function CompaniesMasterPage({ initialTab = 'companies' }) {
   return (
     <div className="space-y-6">
       {/* Header & Section Switcher */}
-      <div className="bg-white p-7 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
               {activeSection === 'companies'
                 ? '15 Licensed Partner Insurers & Licences'
+                : activeSection === 'products'
+                ? 'Approved Product Lines & Insurance Plans'
                 : 'Central Insurance Document Repository'}
             </h1>
             <Badge variant="primary" size="sm">
-              {activeSection === 'companies' ? '15 Partners Active' : 'IRDA Master Docs'}
+              {activeSection === 'companies'
+                ? '15 Partners Active'
+                : activeSection === 'products'
+                ? `${filteredProducts.length} Active Plans`
+                : 'IRDA Master Docs'}
             </Badge>
           </div>
           <p className="text-xs text-slate-500 mt-1">
             {activeSection === 'companies'
               ? 'Official IRDAI registration numbers, statutory solvency details, and direct carrier login links.'
+              : activeSection === 'products'
+              ? 'Standard rate sheets, underwriting guidelines, insurer commission slabs, and policy terms.'
               : 'Download approved policy wordings, network garage/hospital directories, proposal forms, and brochures.'}
           </p>
         </div>
@@ -228,6 +359,18 @@ export function CompaniesMasterPage({ initialTab = 'companies' }) {
           >
             <Building2 className="w-3.5 h-3.5" />
             Partner Licences
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSection('products')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              activeSection === 'products'
+                ? 'bg-white text-indigo-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            Products & Plans
           </button>
           <button
             type="button"
@@ -394,7 +537,46 @@ export function CompaniesMasterPage({ initialTab = 'companies' }) {
         </div>
       )}
 
-      {/* SECTION 2: DOCUMENT REPOSITORY */}
+      {/* SECTION 2: PRODUCTS CATALOGUE */}
+      {activeSection === 'products' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl">
+              {[
+                { id: 'ALL', label: 'All Products' },
+                { id: 'Motor', label: 'Motor Plans' },
+                { id: 'Health', label: 'Health & Mediclaim' },
+                { id: 'Finance', label: 'Loan Shield' }
+              ].map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setProductCategory(c.id)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    productCategory === c.id
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            <div className="text-xs text-slate-500 font-medium">
+              Showing <span className="font-bold text-slate-800">{filteredProducts.length}</span> approved tariff plans
+            </div>
+          </div>
+
+          <DataTable
+            columns={productColumns}
+            data={filteredProducts}
+            searchPlaceholder="Search products by plan name, code, segment or underwriter..."
+            emptyMessage="No insurance products match current filter"
+          />
+        </div>
+      )}
+
+      {/* SECTION 3: DOCUMENT REPOSITORY */}
       {activeSection === 'repository' && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">

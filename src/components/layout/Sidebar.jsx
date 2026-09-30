@@ -1,155 +1,256 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Shield,
   LayoutDashboard,
-  FileCheck2,
-  Sliders,
   ShieldCheck,
-  AlertTriangle,
+  Plus,
+  Sliders,
   RefreshCw,
+  AlertTriangle,
+  Clock,
+  ArrowRight,
   Coins,
+  Wallet,
   CreditCard,
+  FileCheck2,
   Users,
   CalendarCheck,
   ReceiptText,
   Building2,
   FolderArchive,
   BarChart3,
-  FileSpreadsheet
+  Settings,
+  ChevronDown,
+  ChevronRight,
+  LogOut
 } from 'lucide-react';
 import { useAppData } from '../../context/AppDataContext';
 
 export function Sidebar({ mobileOpen, setMobileOpen }) {
-  const { activeTab, setActiveTab, metrics } = useAppData();
+  const {
+    activeTab,
+    setActiveTab,
+    setShowRegisterClaimModal,
+    currentUser,
+    logout
+  } = useAppData();
 
-  const navSections = [
-    {
-      title: 'MAIN',
-      items: [
-        {
-          id: 'dashboard',
-          label: 'Dashboard',
-          icon: LayoutDashboard,
-          badge: null
+  // Accordion expansion state
+  const [expandedMenus, setExpandedMenus] = useState({
+    insurance: true,
+    claims: true,
+    loans: false,
+    hr: false,
+    master: false,
+    settings: false
+  });
+
+  // Automatically expand parent group if activeTab belongs to it
+  useEffect(() => {
+    navItems.forEach((item) => {
+      if (item.type === 'group') {
+        const hasActiveChild = item.subItems?.some(
+          (sub) =>
+            sub.id === activeTab ||
+            (sub.id === 'wizard' && (activeTab === 'applications' || activeTab === 'wizard' || activeTab === 'motor-insurance' || activeTab === 'health-insurance')) ||
+            (sub.id === 'loans-active' && activeTab === 'loans') ||
+            (sub.id === 'settings-permissions' && (activeTab === 'settings' || activeTab === 'settings-permissions'))
+        );
+        if (hasActiveChild) {
+          setExpandedMenus((prev) => ({ ...prev, [item.key]: true }));
         }
-      ]
+      }
+    });
+  }, [activeTab]);
+
+  const toggleGroup = (key) => {
+    setExpandedMenus((prev) => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  // Exact Clean Sidebar Navigation matching Raju business portal requirements
+  const navItems = [
+    {
+      type: 'link',
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: LayoutDashboard
     },
     {
-      title: 'INSURANCE OPERATIONS',
-      items: [
+      type: 'group',
+      key: 'insurance',
+      label: 'Insurance Operations',
+      icon: ShieldCheck,
+      subItems: [
         {
-          id: 'applications',
-          label: 'Applications',
-          icon: FileCheck2,
-          badge: 'New',
-          badgeClass: 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-        },
-        {
-          id: 'quotes',
-          label: 'Quotations',
-          icon: Sliders,
-          badge: '18',
-          badgeClass: 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+          id: 'wizard',
+          label: 'New Application',
+          icon: Plus
         },
         {
           id: 'policies',
           label: 'Active Policies',
-          icon: ShieldCheck,
-          badge: `${metrics.activePolicies}`,
-          badgeClass: 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+          icon: ShieldCheck
         },
         {
-          id: 'claims',
-          label: 'Claims',
-          icon: AlertTriangle,
-          badge: '48',
-          badgeClass: 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+          id: 'quotes',
+          label: 'Quotations & Rates',
+          icon: Sliders
         },
         {
           id: 'renewals',
-          label: 'Renewals',
-          icon: RefreshCw,
-          badge: '76',
-          badgeClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+          label: 'Policy Renewals',
+          icon: RefreshCw
         }
       ]
     },
     {
-      title: 'FINANCIALS',
-      items: [
+      type: 'group',
+      key: 'claims',
+      label: 'Claims Management',
+      icon: AlertTriangle,
+      subItems: [
         {
-          id: 'loans',
-          label: 'Personal Loans',
-          icon: Coins,
-          badge: null
+          id: 'claims',
+          label: 'All Claims',
+          icon: AlertTriangle,
+          badge: '48',
+          badgeClass: 'bg-slate-800 text-slate-400 font-bold text-[9px] px-1.5 py-0.2 rounded-full'
         },
         {
-          id: 'payments',
-          label: 'Payments',
-          icon: CreditCard,
-          badge: null
+          id: 'claims-new',
+          label: 'Register New Claim',
+          icon: Plus,
+          action: 'openRegisterModal'
+        },
+        {
+          id: 'claims-pending',
+          label: 'Pending Claims',
+          icon: Clock,
+          badge: '32',
+          badgeClass: 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-[9px] px-1.5 py-0.2 rounded-full'
+        },
+        {
+          id: 'claims-settlements',
+          label: 'Settlement Tracking',
+          icon: ArrowRight
         }
       ]
     },
     {
-      title: 'HR & PEOPLE',
-      items: [
+      type: 'group',
+      key: 'loans',
+      label: 'Insurance Loan',
+      icon: Coins,
+      subItems: [
+        {
+          id: 'loans-new',
+          label: 'New Loan Application',
+          icon: Plus
+        },
+        {
+          id: 'loans-active',
+          label: 'Active Loans',
+          icon: Wallet
+        },
+        {
+          id: 'loans-repayments',
+          label: 'Repayments / EMI',
+          icon: CreditCard
+        },
+        {
+          id: 'loans-settlement',
+          label: 'Loan Settlement',
+          icon: FileCheck2
+        }
+      ]
+    },
+    {
+      type: 'group',
+      key: 'hr',
+      label: 'HR & People',
+      icon: Users,
+      adminOnly: true,
+      subItems: [
         {
           id: 'staff',
-          label: 'Employees',
-          icon: Users,
-          badge: null
+          label: 'Employee Directory',
+          icon: Users
         },
         {
           id: 'leaves',
-          label: 'Leave',
-          icon: CalendarCheck,
-          badge: null
+          label: 'Leave Management',
+          icon: CalendarCheck
         },
         {
           id: 'payroll',
-          label: 'Payroll',
-          icon: ReceiptText,
-          badge: null
+          label: 'Payroll Processing',
+          icon: ReceiptText
         }
       ]
     },
     {
-      title: 'MASTER DATA',
-      items: [
+      type: 'group',
+      key: 'master',
+      label: 'Master Data & Partners',
+      icon: Building2,
+      adminOnly: true,
+      subItems: [
         {
           id: 'companies',
           label: 'Insurance Partners',
-          icon: Building2,
-          badge: '15',
-          badgeClass: 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+          icon: Building2
+        },
+        {
+          id: 'products',
+          label: 'Products',
+          icon: Sliders
         },
         {
           id: 'repository',
-          label: 'Documents',
-          icon: FolderArchive,
-          badge: null
+          label: 'Document Repository',
+          icon: FolderArchive
         }
       ]
     },
     {
-      title: 'REPORTS & COMPLIANCE',
-      items: [
+      type: 'link',
+      id: 'reports',
+      label: 'Reports',
+      icon: BarChart3
+    },
+    {
+      type: 'group',
+      key: 'settings',
+      label: 'Settings',
+      icon: Settings,
+      adminOnly: true,
+      subItems: [
         {
-          id: 'reports',
-          label: 'Reports',
-          icon: BarChart3,
-          badge: null
-        },
-        {
-          id: 'audit',
-          label: 'Audit Trail',
-          icon: ShieldCheck,
-          badge: null
+          id: 'settings-permissions',
+          label: 'Permissions & Roles',
+          icon: ShieldCheck
         }
       ]
     }
   ];
+
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.adminOnly && currentUser?.role !== 'ADMIN') return false;
+    return true;
+  });
+
+  const handleItemClick = (item) => {
+    if (item.action === 'openRegisterModal') {
+      setActiveTab('claims');
+      setShowRegisterClaimModal(true);
+    } else {
+      setActiveTab(item.id);
+    }
+    setMobileOpen(false);
+  };
 
   return (
     <>
@@ -167,80 +268,167 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
         }`}
       >
         {/* Brand Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800 bg-[#0B132B]">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-            <Shield className="w-5 h-5" />
+        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-800 bg-[#0B132B]">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs">
+            <Shield className="w-4 h-4" />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <h1 className="text-base font-black tracking-wider text-white">RAJU</h1>
-              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-blue-600 text-white">
+              <h1 className="text-sm font-black tracking-wider text-white">RAJU</h1>
+              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-blue-600 text-white">
                 VENDOR
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">IRDA/DB-784/21</p>
+            <p className="text-[10px] text-slate-400 font-medium">IRDA/DB-784/21</p>
           </div>
         </div>
 
-        {/* Navigation Sections */}
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-          {navSections.map((section) => (
-            <div key={section.title} className="space-y-1">
-              <p className="px-3 text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">
-                {section.title}
-              </p>
-              {section.items.map((item) => {
-                const isActive = activeTab === item.id || (item.id === 'applications' && activeTab === 'wizard');
-                const Icon = item.icon;
+        {/* Clean Hierarchical Menu List */}
+        <div className="flex-1 overflow-y-auto px-2.5 py-2.5 space-y-1">
+          {visibleNavItems.map((item) => {
+            if (item.type === 'link') {
+              const isActive = activeTab === item.id;
+              const LinkIcon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleItemClick(item)}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-[#2563EB] text-white shadow-xs'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <LinkIcon
+                      className={`w-3.5 h-3.5 shrink-0 ${
+                        isActive ? 'text-white' : 'text-slate-400'
+                      }`}
+                    />
+                    <span className="truncate tracking-wide">{item.label}</span>
+                  </div>
+                </button>
+              );
+            }
 
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveTab(item.id === 'applications' ? 'applications' : item.id);
-                      setMobileOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-[#2563EB] text-white shadow-md shadow-blue-600/30'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                      <span className="truncate">{item.label}</span>
-                    </div>
+            // Accordion Group
+            const isExpanded = expandedMenus[item.key];
+            const hasActiveChild = item.subItems?.some(
+              (sub) =>
+                sub.id === activeTab ||
+                (sub.id === 'wizard' && (activeTab === 'applications' || activeTab === 'wizard' || activeTab === 'motor-insurance' || activeTab === 'health-insurance')) ||
+                (sub.id === 'loans-dashboard' && activeTab === 'loans')
+            );
+            const GroupIcon = item.icon;
 
-                    {item.badge && (
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                          isActive ? 'bg-white/20 text-white' : item.badgeClass || 'bg-slate-800 text-slate-400'
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
+            return (
+              <div key={item.key} className="space-y-0.5">
+                {/* Parent Group Header */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(item.key)}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    hasActiveChild && !isExpanded
+                      ? 'bg-blue-950/60 text-blue-300 border border-blue-800/50'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <GroupIcon
+                      className={`w-3.5 h-3.5 shrink-0 ${
+                        hasActiveChild ? 'text-[#38BDF8]' : 'text-slate-400'
+                      }`}
+                    />
+                    <span className="truncate tracking-wide">{item.label}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isExpanded ? (
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                    ) : (
+                      <ChevronRight className="w-3 h-3 text-slate-400" />
                     )}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+                  </div>
+                </button>
+
+                {/* Sub-Items List */}
+                {isExpanded && item.subItems && (
+                  <div className="pl-3 pr-0.5 py-0.5 space-y-0.5 border-l border-slate-800 ml-3">
+                    {item.subItems.map((sub) => {
+                      const isSubActive =
+                        activeTab === sub.id ||
+                        (sub.id === 'wizard' && (activeTab === 'applications' || activeTab === 'wizard' || activeTab === 'motor-insurance' || activeTab === 'health-insurance')) ||
+                        (sub.id === 'loans-active' && activeTab === 'loans') ||
+                        (sub.id === 'settings-permissions' && (activeTab === 'settings' || activeTab === 'settings-permissions'));
+                      const SubIcon = sub.icon;
+
+                      return (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => handleItemClick(sub)}
+                          className={`w-full flex items-center justify-between px-2 py-1.2 rounded-md text-[11px] transition-all cursor-pointer ${
+                            isSubActive
+                              ? 'bg-[#2563EB] text-white shadow-xs font-bold'
+                              : 'text-slate-400 hover:text-white hover:bg-slate-800/50 font-medium'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <SubIcon
+                              className={`w-3 h-3 shrink-0 ${
+                                isSubActive ? 'text-white' : 'text-slate-500'
+                              }`}
+                            />
+                            <span className="truncate">{sub.label}</span>
+                          </div>
+
+                          {/* Only urgent action counts: 48 on All Claims, 32 on Pending Claims */}
+                          {sub.badge && (
+                            <span
+                              className={`text-[9px] px-1.5 py-0.2 rounded-full shrink-0 ${
+                                isSubActive
+                                  ? 'bg-white/20 text-white font-bold'
+                                  : sub.badgeClass || 'bg-slate-800 text-slate-400'
+                              }`}
+                            >
+                              {sub.badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        {/* User Profile */}
-        <div className="p-3 border-t border-slate-800 bg-[#0B132B]">
-          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-xs">
-              RR
+        {/* User Profile Footer */}
+        <div className="p-2.5 border-t border-slate-800 bg-[#0B132B]">
+          <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900 border border-slate-800">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className={`w-7 h-7 rounded-md ${currentUser?.avatarBg || 'bg-gradient-to-tr from-blue-600 to-indigo-600'} flex items-center justify-center text-white text-[11px] font-bold shadow-2xs shrink-0`}>
+                {currentUser?.initials || 'RR'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-white truncate">{currentUser?.name || 'R. Rajkumar'}</p>
+                <p className="text-[9px] text-blue-400 truncate flex items-center gap-1 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+                  {currentUser?.roleTitle || 'Principal Broker'}
+                </p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-white truncate">R. Rajkumar</p>
-              <p className="text-[10px] text-blue-400 truncate flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block"></span>
-                Principal Broker
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={logout}
+              title="Logout session"
+              className="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg transition-colors cursor-pointer hover:bg-slate-800 shrink-0"
+              aria-label="Logout"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       </aside>

@@ -378,3 +378,112 @@ export const MOCK_REPOSITORY_DOCS = [
     fileType: "PDF"
   }
 ];
+
+export const MOCK_PRODUCTS = [
+  {
+    id: "PROD-MTR-01",
+    code: "PVT-CAR-COMP",
+    name: "Private Car Comprehensive Package",
+    category: "Motor Insurance",
+    type: "Motor",
+    underwriters: ["HDFC ERGO", "ICICI Lombard", "Go Digit", "Bajaj Allianz"],
+    tenure: "1 Year OD + 3 Years TP",
+    standardDeductible: "₹1,000 compulsory",
+    basePremium: "₹8,400 / yr",
+    commissionRate: "17.5%",
+    keyAddons: ["Zero Depreciation", "Engine Protection", "24x7 RSA", "Return to Invoice"],
+    status: "Active",
+    irdaApprovalCode: "IRDAI/NL-HLT/HDFC/P-M/V.I/2023"
+  },
+  {
+    id: "PROD-MTR-02",
+    code: "2W-PKG-PLUS",
+    name: "Two Wheeler Package Policy",
+    category: "Motor Insurance",
+    type: "Motor",
+    underwriters: ["ICICI Lombard", "Go Digit", "New India", "TATA AIG"],
+    tenure: "1 Year OD + 5 Years TP",
+    standardDeductible: "₹100 compulsory",
+    basePremium: "₹1,850 / yr",
+    commissionRate: "20.0%",
+    keyAddons: ["Zero Dep", "Consumables Cover", "PA Owner-Driver ₹15L"],
+    status: "Active",
+    irdaApprovalCode: "IRDAI/NL-HLT/ILOM/P-M/V.II/2023"
+  },
+  {
+    id: "PROD-MTR-03",
+    code: "GCV-FLEET-PRO",
+    name: "Commercial Goods Vehicle (GCV)",
+    category: "Motor Insurance",
+    type: "Motor",
+    underwriters: ["New India Assurance", "National Insurance", "HDFC ERGO"],
+    tenure: "1 Year Comprehensive",
+    standardDeductible: "₹1,500 - ₹2,500 by GVW",
+    basePremium: "₹24,500 / yr",
+    commissionRate: "16.0%",
+    keyAddons: ["Paid Driver Liability", "Cleaner / Coolie Cover", "IMT-23 Cover"],
+    status: "Active",
+    irdaApprovalCode: "IRDAI/NL-GEN/NIA/P-M/V.I/2022"
+  },
+  {
+    id: "PROD-HLT-01",
+    code: "HLT-IND-SUP",
+    name: "Individual Mediclaim Super Shield",
+    category: "Health & Mediclaim",
+    type: "Health",
+    underwriters: ["Star Health", "Care Health", "Niva Bupa"],
+    tenure: "1 to 3 Years Renewable",
+    standardDeductible: "Nil / Zero Deductible",
+    basePremium: "₹7,200 / yr",
+    commissionRate: "15.0%",
+    keyAddons: ["No Claim Bonus Super (100%)", "Annual Health Checkup", "Unlimited Recharge"],
+    status: "Active",
+    irdaApprovalCode: "IRDAI/HLT/SHAI/P-H/V.III/2024"
+  },
+  {
+    id: "PROD-HLT-02",
+    code: "HLT-FAM-FLT",
+    name: "Family Floater Comprehensive",
+    category: "Health & Mediclaim",
+    type: "Health",
+    underwriters: ["Star Health", "Care Health", "HDFC ERGO"],
+    tenure: "1 to 3 Years Renewable",
+    standardDeductible: "Nil",
+    basePremium: "₹16,800 / yr",
+    commissionRate: "18.0%",
+    keyAddons: ["Maternity & Newborn Cover", "Pre/Post Hospitalization 60/180d", "Day Care Procedures"],
+    status: "Active",
+    irdaApprovalCode: "IRDAI/HLT/CARE/P-H/V.II/2024"
+  },
+  {
+    id: "PROD-HLT-03",
+    code: "HLT-SNR-RED",
+    name: "Senior Citizen Red Carpet",
+    category: "Health & Mediclaim",
+    type: "Health",
+    underwriters: ["Star Health", "SBI General", "New India"],
+    tenure: "1 Year Guaranteed Renewal",
+    standardDeductible: "10% Co-payment",
+    basePremium: "₹18,500 / yr",
+    commissionRate: "15.0%",
+    keyAddons: ["Pre-existing Diseases Day 1", "No Pre-policy Medical Test", "Dialysis & Chemotherapy Cover"],
+    status: "Active",
+    irdaApprovalCode: "IRDAI/HLT/SHAI/P-H/V.IV/2023"
+  },
+  {
+    id: "PROD-FIN-01",
+    code: "LAP-FIN-SHIELD",
+    name: "Loan Against Policy (LAP) Protection",
+    category: "Financial Services",
+    type: "Finance",
+    underwriters: ["Raju Vendor / In-house Capital & Shriram Finance"],
+    tenure: "6 to 36 Months EMI",
+    standardDeductible: "Policy Surrender Value Collateral",
+    basePremium: "1.15% monthly interest",
+    commissionRate: "2.5% processing fee",
+    keyAddons: ["Zero CIBIL Hard Enquiry", "Disbursement in 24 Hours", "Direct Carrier Premium Auto-pay"],
+    status: "Active",
+    irdaApprovalCode: "FIN-NBFC/DB-784/2023"
+  }
+];
+

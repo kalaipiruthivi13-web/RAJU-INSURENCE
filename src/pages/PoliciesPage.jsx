@@ -202,26 +202,27 @@ export function PoliciesPage() {
   ];
 
   return (
-    <div className="space-y-6" onClick={() => setActiveMenuId(null)}>
-      {/* Header */}
-      <div className="bg-white p-7 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-3" onClick={() => setActiveMenuId(null)}>
+      {/* Header - Compact */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
               Active Policies Repository
             </h1>
             <Badge variant="primary" size="sm">{policies.length} Policies Active</Badge>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-[11px] text-slate-500 mt-0.5">
             Manage all in-force motor, health, and commercial policies issued through RAJU VENDOR agency portal.
           </p>
         </div>
 
         <Button
           variant="primary"
-          size="md"
+          size="sm"
           icon={Plus}
           onClick={() => setActiveTab('wizard')}
+          className="py-1.5 text-xs font-bold shrink-0"
         >
           Issue New Policy
         </Button>

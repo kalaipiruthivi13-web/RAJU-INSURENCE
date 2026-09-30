@@ -6,7 +6,7 @@ import {
   INITIAL_EMPLOYEES,
   INITIAL_LEAVES
 } from '../data/mockData';
-import { INSURANCE_PARTNERS, MOCK_REPOSITORY_DOCS } from '../data/mockInsurancePartners';
+import { INSURANCE_PARTNERS, MOCK_REPOSITORY_DOCS, MOCK_PRODUCTS } from '../data/mockInsurancePartners';
 
 const AppDataContext = createContext(null);
 
@@ -89,39 +89,6 @@ export const INITIAL_QUOTES = [
   }
 ];
 
-export const INITIAL_PAYMENTS = [
-  {
-    id: 'TXN-98124',
-    policyId: 'POL-2024-8891',
-    clientName: 'R. Karthikeyan',
-    amount: 14250,
-    mode: 'UPI Instant QR',
-    status: 'Success',
-    timestamp: '2024-09-15 11:24 AM',
-    utr: 'UPI/428198241091/AXIS'
-  },
-  {
-    id: 'TXN-98125',
-    policyId: 'POL-2024-7712',
-    clientName: 'Sundaramurthy M.',
-    amount: 28500,
-    mode: 'Agency CD Account',
-    status: 'Success',
-    timestamp: '2024-09-16 03:40 PM',
-    utr: 'CD-DEPOSIT-HDFC-9912'
-  },
-  {
-    id: 'TXN-98126',
-    policyId: 'POL-2024-6540',
-    clientName: 'P. Meenakshi Ammal',
-    amount: 19800,
-    mode: 'Netbanking Direct',
-    status: 'Success',
-    timestamp: '2024-09-18 09:15 AM',
-    utr: 'NEFT-SBIN-55129031'
-  }
-];
-
 export const INITIAL_AUDIT_LOGS = [
   {
     id: 'AUD-101',
@@ -146,7 +113,44 @@ export const INITIAL_AUDIT_LOGS = [
   }
 ];
 
+export const USERS = {
+  ADMIN: {
+    id: 'USR-ADMIN-01',
+    name: 'R. Rajkumar',
+    role: 'ADMIN',
+    roleLabel: 'Admin',
+    roleTitle: 'Principal Broker',
+    email: 'rajkumar@rajuvendor.in',
+    phone: '+91 94440 12345',
+    license: 'IRDA/DB-784/21',
+    initials: 'RR',
+    avatarBg: 'bg-indigo-600'
+  },
+  USER: {
+    id: 'USR-STAFF-02',
+    name: 'K. Priya',
+    role: 'USER',
+    roleLabel: 'Staff / User',
+    roleTitle: 'Operations Executive',
+    email: 'priya.k@rajuvendor.in',
+    phone: '+91 98410 77889',
+    license: 'IRDA/POSP-4412',
+    initials: 'KP',
+    avatarBg: 'bg-blue-600'
+  }
+};
+
 export function AppDataProvider({ children }) {
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('raju_current_user');
+    return saved ? JSON.parse(saved) : USERS.ADMIN;
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const saved = localStorage.getItem('raju_is_authenticated');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [globalSearch, setGlobalSearch] = useState('');
 
@@ -157,9 +161,17 @@ export function AppDataProvider({ children }) {
   });
 
   const [claims, setClaims] = useState(() => {
-    const saved = localStorage.getItem('raju_claims');
+    const saved = localStorage.getItem('raju_claims_v3');
     return saved ? JSON.parse(saved) : INITIAL_CLAIMS;
   });
+
+  const [selectedClaimId, setSelectedClaimId] = useState('CLM-2024-105');
+  const [showRegisterClaimModal, setShowRegisterClaimModal] = useState(false);
+
+  const navigateToClaim = (claimId) => {
+    setSelectedClaimId(claimId);
+    setActiveTab('claims');
+  };
 
   const [loans, setLoans] = useState(() => {
     const saved = localStorage.getItem('raju_loans');
@@ -177,7 +189,6 @@ export function AppDataProvider({ children }) {
   });
 
   const [quotes, setQuotes] = useState(INITIAL_QUOTES);
-  const [payments, setPayments] = useState(INITIAL_PAYMENTS);
   const [actionTasks, setActionTasks] = useState(INITIAL_ACTION_REQUIRED);
   const [repositoryDocs, setRepositoryDocs] = useState(MOCK_REPOSITORY_DOCS);
   const [auditLogs, setAuditLogs] = useState(INITIAL_AUDIT_LOGS);
@@ -189,7 +200,7 @@ export function AppDataProvider({ children }) {
   }, [policies]);
 
   useEffect(() => {
-    localStorage.setItem('raju_claims', JSON.stringify(claims));
+    localStorage.setItem('raju_claims_v3', JSON.stringify(claims));
   }, [claims]);
 
   useEffect(() => {
@@ -220,6 +231,32 @@ export function AppDataProvider({ children }) {
     setAuditLogs((prev) => [newLog, ...prev]);
   };
 
+  const login = (role = 'ADMIN', credentials = {}) => {
+    const userTemplate = role === 'ADMIN' ? USERS.ADMIN : USERS.USER;
+    const resolvedUser = {
+      ...userTemplate,
+      name: credentials.name || userTemplate.name,
+      email: credentials.email || userTemplate.email
+    };
+    setCurrentUser(resolvedUser);
+    setIsAuthenticated(true);
+    localStorage.setItem('raju_current_user', JSON.stringify(resolvedUser));
+    localStorage.setItem('raju_is_authenticated', JSON.stringify(true));
+    addNotification(`Signed in successfully as ${resolvedUser.name} (${resolvedUser.roleTitle})`, 'success');
+    addAuditLog(`User signed in as ${resolvedUser.roleLabel}`, resolvedUser.email);
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    localStorage.setItem('raju_is_authenticated', JSON.stringify(false));
+    addNotification('You have been logged out securely.', 'info');
+    addAuditLog('User logged out', currentUser?.email || 'Session Closed');
+  };
+
+  const switchRole = (role) => {
+    login(role);
+  };
+
   // 1. Policy Actions
   const addPolicy = (newPolicy) => {
     const id = `POL-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -239,9 +276,18 @@ export function AppDataProvider({ children }) {
   // 2. 4-Stage Claims Pipeline Actions
   const addClaim = (claimData) => {
     const id = `CLM-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+    
+    // Auto-calculate settlement due date (+7 days)
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 7);
+    const calculatedDueDate = claimData.settlementDueDate || dueDate.toISOString().split('T')[0];
+
     const newClaim = {
       id,
       currentStage: 1, // 1: Registered, 2: Documents & Insurer Submission, 3: Survey / Review, 4: Settlement / Rejection
+      settlementDueDate: calculatedDueDate,
+      settlementStatus: 'Due in 7 days',
+      attachments: claimData.attachments || [],
       ...claimData,
       stageDetails: {
         stage1: {
@@ -250,11 +296,11 @@ export function AppDataProvider({ children }) {
           status: 'Claim Registered in Broker System'
         },
         stage2: {
-          completed: false,
-          date: '',
-          docs: claimData.docs || ['RC Copy', 'Spot Photos', 'Damage Estimate'],
-          insurerRefNo: '',
-          portalSubmissionStatus: 'Draft'
+          completed: (claimData.attachments && claimData.attachments.length > 0) ? true : false,
+          date: (claimData.attachments && claimData.attachments.length > 0) ? new Date().toISOString().split('T')[0] : '',
+          docs: claimData.attachments?.map((a) => a.name) || ['RC Copy', 'Spot Photos', 'Damage Estimate'],
+          insurerRefNo: `IR-${Math.floor(10000 + Math.random() * 90000)}`,
+          portalSubmissionStatus: (claimData.attachments && claimData.attachments.length > 0) ? 'Submitted to Carrier Portal' : 'Draft'
         },
         stage3: {
           completed: false,
@@ -272,9 +318,16 @@ export function AppDataProvider({ children }) {
         }
       }
     };
+
+    // If documents were uploaded right away, we can advance or keep at 1/2
+    if (claimData.attachments && claimData.attachments.length >= 2) {
+      newClaim.currentStage = 2;
+    }
+
     setClaims((prev) => [newClaim, ...prev]);
-    addNotification(`New Claim ${id} initiated for ${claimData.clientName}`, 'info');
-    addAuditLog(`Claim ${id} registered in 4-Stage Pipeline`, claimData.clientName);
+    setSelectedClaimId(id);
+    addNotification(`New Claim ${id} initiated for ${claimData.clientName} with ${claimData.attachments?.length || 0} attachment(s)`, 'info');
+    addAuditLog(`Claim ${id} registered with attachments`, claimData.clientName);
     return newClaim;
   };
 
@@ -339,7 +392,7 @@ export function AppDataProvider({ children }) {
           expiryDate: newExpiryDate,
           companyId: partner ? partner.id : p.companyId,
           companyName: partner ? partner.shortName : p.companyName,
-          renewableVia: partner && partner.id !== p.companyId ? 'Ported' : 'Direct'
+          renewableVia: 'Direct'
         };
       })
     );
@@ -464,21 +517,32 @@ export function AppDataProvider({ children }) {
   return (
     <AppDataContext.Provider
       value={{
+        currentUser,
+        isAuthenticated,
+        login,
+        logout,
+        switchRole,
+        USERS,
         activeTab,
         setActiveTab,
         globalSearch,
         setGlobalSearch,
         policies,
         claims,
+        selectedClaimId,
+        setSelectedClaimId,
+        navigateToClaim,
+        showRegisterClaimModal,
+        setShowRegisterClaimModal,
         loans,
         employees,
         leaves,
         quotes,
-        payments,
         actionTasks,
         repositoryDocs,
         auditLogs,
         partners: INSURANCE_PARTNERS,
+        products: MOCK_PRODUCTS,
         notifications,
         addPolicy,
         addClaim,
