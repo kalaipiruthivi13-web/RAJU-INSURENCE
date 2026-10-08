@@ -140,12 +140,12 @@ export function LoansPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-              Insurance Loan Management & Credit Ledger
+              Insurance Loan
             </h1>
             <Badge variant="primary" size="sm">2.0% Monthly Ledger</Badge>
           </div>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Automated 30-day interest tracking, policy-collateralized loan disbursements, credit repayments, and IRDA NOC settlements.
+            Disbursements, 30-day interest tracking, credit repayments & settlements
           </p>
         </div>
 
@@ -327,7 +327,7 @@ export function LoansPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setActiveSubTab('loans-dashboard')}
+                onClick={() => setActiveSubTab('loans-active')}
               >
                 Cancel
               </Button>

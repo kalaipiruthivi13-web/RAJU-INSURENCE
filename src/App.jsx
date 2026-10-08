@@ -71,10 +71,7 @@ function MainRouter() {
       case 'renewals':
         return <RenewalsPage />;
       case 'loans':
-      case 'loans-dashboard':
       case 'loans-new':
-      case 'loans-ledger':
-      case 'loans-applications':
       case 'loans-active':
       case 'loans-repayments':
       case 'loans-settlement':
@@ -93,14 +90,9 @@ function MainRouter() {
         return isAdmin ? <CompaniesMasterPage initialTab="repository" /> : <AccessRestrictedBanner title="Documents Repository Restricted" />;
       case 'reports':
       case 'audit':
-        return <ReportsAuditPage />;
+        return isAdmin ? <ReportsAuditPage /> : <AccessRestrictedBanner title="Financial & IRDA Reports Restricted" />;
       case 'settings':
       case 'settings-permissions':
-      case 'settings-users':
-      case 'settings-partners':
-      case 'settings-docs':
-      case 'settings-system':
-      case 'settings-audit':
         return isAdmin ? <SettingsPage /> : <AccessRestrictedBanner title="Permissions & Roles Restricted" />;
       default:
         return <DashboardPage />;

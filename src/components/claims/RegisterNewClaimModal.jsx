@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   CheckCircle2,
   AlertCircle,
@@ -51,7 +51,7 @@ export function RegisterNewClaimModal({ isOpen, onClose }) {
       companyName: partner ? partner.shortName : 'HDFC ERGO',
       claimAmountRequested: Number(formData.claimAmountRequested) || 35000,
       settlementDueDate: calculatedDueDate,
-      settlementStatus: Due in  days,
+      settlementStatus: `Due in ${days} days`,
       attachments: [] // Documents can be uploaded later from Claim Details -> Documents
     });
 

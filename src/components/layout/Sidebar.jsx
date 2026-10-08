@@ -52,7 +52,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
         const hasActiveChild = item.subItems?.some(
           (sub) =>
             sub.id === activeTab ||
-            (sub.id === 'wizard' && (activeTab === 'applications' || activeTab === 'wizard' || activeTab === 'motor-insurance' || activeTab === 'health-insurance')) ||
+            (item.key === 'insurance' && (activeTab === 'applications' || activeTab === 'wizard' || activeTab === 'motor-insurance' || activeTab === 'health-insurance')) ||
             (sub.id === 'loans-active' && activeTab === 'loans') ||
             (sub.id === 'settings-permissions' && (activeTab === 'settings' || activeTab === 'settings-permissions'))
         );
@@ -84,11 +84,6 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
       label: 'Insurance Operations',
       icon: ShieldCheck,
       subItems: [
-        {
-          id: 'wizard',
-          label: 'New Application',
-          icon: Plus
-        },
         {
           id: 'policies',
           label: 'Active Policies',
@@ -219,7 +214,8 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
       type: 'link',
       id: 'reports',
       label: 'Reports',
-      icon: BarChart3
+      icon: BarChart3,
+      adminOnly: true
     },
     {
       type: 'group',
@@ -318,7 +314,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
               (sub) =>
                 sub.id === activeTab ||
                 (sub.id === 'wizard' && (activeTab === 'applications' || activeTab === 'wizard' || activeTab === 'motor-insurance' || activeTab === 'health-insurance')) ||
-                (sub.id === 'loans-dashboard' && activeTab === 'loans')
+                (sub.id === 'loans-active' && activeTab === 'loans')
             );
             const GroupIcon = item.icon;
 

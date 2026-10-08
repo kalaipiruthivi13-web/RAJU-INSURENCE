@@ -109,7 +109,64 @@ export const INITIAL_AUDIT_LOGS = [
     user: 'M. Deepika (Retention Officer)',
     action: '30-Day WhatsApp Renewal Notice Dispatched',
     entity: 'POL-2024-6540',
-    time: '2024-09-20 01:20 PM'
+    time: '2024-09-20 02:15 PM'
+  }
+];
+
+export const INITIAL_TOWING_JOBS = [
+  {
+    id: 'TOW-2026-00125',
+    billNo: 'TOW-BILL-2026-00125',
+    requestDateTime: '08/10/2026 07:10 PM',
+    pickupDateTime: '08/10/2026 07:20 PM',
+    policyNumber: 'POL-2024-8891',
+    vehicleNumber: 'TN 09 BX 4512',
+    clientName: 'R. Karthikeyan',
+    phone: '+91 98412 34567',
+    breakdownLocation: 'GST Road, Near Kathipara Flyover, Chennai',
+    destinationWorkshop: 'Authorized Maruti Service Center, Guindy',
+    breakdownReason: 'Accident Collision / Non-Driveable',
+    towType: 'Flatbed Tow Truck',
+    vehicleCondition: 'Non-Driveable',
+    estimatedDistanceKm: 18.5,
+    actualDistanceKm: 18.5,
+    partnerName: 'TVS Auto Assist 24x7',
+    partnerPhone: '+91 98409 11223',
+    towTruckNo: 'TN 09 TC 4488',
+    driverName: 'S. Velu',
+    driverPhone: '+91 94441 66778',
+    rateCard: 'Standard',
+    baseTowingCharge: 450,
+    baseIncludedKm: 10,
+    ratePerKm: 25,
+    labourTowing: 200,
+    labourRecovery: 100,
+    labourLoading: 0,
+    labourAdditionalHours: 0,
+    labourRatePerHour: 150,
+    freeWaitingMin: 30,
+    actualWaitingMin: 55,
+    waitingRatePer30Min: 100,
+    nightChargeEnabled: false,
+    nightChargeAmount: 200,
+    expressChargeEnabled: false,
+    expressChargeAmount: 150,
+    tollChargeAmount: 150,
+    parkingChargeAmount: 0,
+    otherChargeAmount: 0,
+    eligibleCoverage: 1500,
+    alreadyUsedCoverage: 500,
+    jobStatus: 'Dispatched',
+    paymentStatus: 'Pending',
+    paymentMethod: 'UPI',
+    transactionId: '',
+    paymentDate: '',
+    documents: [
+      { id: 'doc-1', name: 'Breakdown Spot Photo.jpg', category: 'Breakdown Photo', status: 'Uploaded', url: '#' },
+      { id: 'doc-2', name: 'Front Bumper Condition.jpg', category: 'Vehicle Condition Photo', status: 'Uploaded', url: '#' },
+      { id: 'doc-3', name: 'Flatbed Tow Truck Spot.jpg', category: 'Tow Truck Photo', status: 'Uploaded', url: '#' },
+      { id: 'doc-4', name: 'Workshop Delivery Acknowledgement.pdf', category: 'Delivery Confirmation', status: 'Pending', url: '#' }
+    ]
   }
 ];
 
@@ -161,12 +218,74 @@ export function AppDataProvider({ children }) {
   });
 
   const [claims, setClaims] = useState(() => {
-    const saved = localStorage.getItem('raju_claims_v3');
-    return saved ? JSON.parse(saved) : INITIAL_CLAIMS;
+    const saved = localStorage.getItem('raju_claims_v4');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= 40) return parsed;
+      } catch (e) {
+        // Fall back to INITIAL_CLAIMS
+      }
+    }
+    return INITIAL_CLAIMS;
   });
 
   const [selectedClaimId, setSelectedClaimId] = useState('CLM-2024-105');
   const [showRegisterClaimModal, setShowRegisterClaimModal] = useState(false);
+  const [showTowingModal, setShowTowingModal] = useState(false);
+
+  const [towingJobs, setTowingJobs] = useState(() => {
+    const saved = localStorage.getItem('raju_towing_jobs');
+    return saved ? JSON.parse(saved) : INITIAL_TOWING_JOBS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('raju_towing_jobs', JSON.stringify(towingJobs));
+  }, [towingJobs]);
+
+  const [claimsFilter, setClaimsFilter] = useState({
+    subTab: 'ALL', // 'ALL' | 'PENDING' | 'SETTLEMENTS'
+    settlementSubFilter: 'ALL', // 'ALL' | 'OVERDUE' | 'DUE_TODAY' | 'DUE_SOON' | 'DUE_7_DAYS' | 'PROCESSING' | 'SETTLED'
+    stageFilter: null // null | 1 | 2 | 3 | 4
+  });
+
+  const navigateToClaimsWithFilter = (subTab = 'ALL', settlementSubFilter = 'ALL', stageFilter = null) => {
+    setClaimsFilter({
+      subTab,
+      settlementSubFilter,
+      stageFilter
+    });
+    if (subTab === 'PENDING') {
+      setActiveTab('claims-pending');
+    } else if (subTab === 'SETTLEMENTS') {
+      setActiveTab('claims-settlements');
+    } else {
+      setActiveTab('claims');
+    }
+  };
+
+  const checkPolicyClaimStatus = (policyId) => {
+    if (!policyId) return { hasUnresolvedClaim: false, claim: null };
+    const policy = policies.find((p) => p.id === policyId);
+
+    const matchedClaim = claims.find((c) => {
+      const matchPolicy = c.policyId === policyId;
+      const matchVehicle = policy?.vehicleNumber && c.vehicleNumber && policy.vehicleNumber.trim().toUpperCase() === c.vehicleNumber.trim().toUpperCase();
+      return matchPolicy || matchVehicle;
+    });
+
+    if (!matchedClaim) return { hasUnresolvedClaim: false, claim: null };
+
+    const isSettled =
+      (matchedClaim.currentStage === 4 && (matchedClaim.stageDetails?.stage4?.status === 'Settled' || matchedClaim.stageDetails?.stage4?.completed)) ||
+      matchedClaim.settlementStatus === 'Settled' ||
+      matchedClaim.settlementStatus === 'Closed';
+
+    return {
+      hasUnresolvedClaim: !isSettled,
+      claim: matchedClaim
+    };
+  };
 
   const navigateToClaim = (claimId) => {
     setSelectedClaimId(claimId);
@@ -200,7 +319,7 @@ export function AppDataProvider({ children }) {
   }, [policies]);
 
   useEffect(() => {
-    localStorage.setItem('raju_claims_v3', JSON.stringify(claims));
+    localStorage.setItem('raju_claims_v4', JSON.stringify(claims));
   }, [claims]);
 
   useEffect(() => {
@@ -375,6 +494,101 @@ export function AppDataProvider({ children }) {
     addAuditLog(`Claim ${claimId} advanced to Stage ${targetStage}`, `Stage ${targetStage}`);
   };
 
+  // Claims Extended Actions (Documents, Bills, Follow-ups, Settlement)
+  const updateClaimDocument = (claimId, docId, updates) => {
+    setClaims((prev) =>
+      prev.map((c) => {
+        if (c.id !== claimId) return c;
+        const currentDocs = c.checklistDocuments || [];
+        const exists = currentDocs.some((d) => d.id === docId);
+        let updatedDocs;
+        if (exists) {
+          updatedDocs = currentDocs.map((d) => (d.id === docId ? { ...d, ...updates } : d));
+        } else {
+          updatedDocs = [...currentDocs, { id: docId, ...updates }];
+        }
+        return { ...c, checklistDocuments: updatedDocs };
+      })
+    );
+    addNotification(`Claim document updated`, 'info');
+  };
+
+  const addClaimBill = (claimId, bill) => {
+    setClaims((prev) =>
+      prev.map((c) => {
+        if (c.id !== claimId) return c;
+        const existingBills = c.bills || [];
+        const newBill = {
+          id: `BILL-${Date.now()}`,
+          uploadedDate: new Date().toLocaleDateString('en-GB'),
+          uploadedBy: currentUser?.name || 'Staff Executive',
+          status: 'Under Review',
+          ...bill
+        };
+        return { ...c, bills: [newBill, ...existingBills] };
+      })
+    );
+    addNotification(`Bill of ₹${bill.amount?.toLocaleString('en-IN') || 0} recorded for Claim ${claimId}`, 'success');
+  };
+
+  const addClaimFollowUp = (claimId, followUp) => {
+    setClaims((prev) =>
+      prev.map((c) => {
+        if (c.id !== claimId) return c;
+        const existingFollowUps = c.followUps || [];
+        const newFollowUp = {
+          id: `FLP-${Date.now()}`,
+          followUpDate: new Date().toLocaleDateString('en-GB'),
+          assignedEmployee: currentUser?.name || 'K. Priya (Operations)',
+          status: 'Completed',
+          ...followUp
+        };
+        return {
+          ...c,
+          nextFollowUpDate: followUp.nextFollowUpDate || c.nextFollowUpDate,
+          followUps: [newFollowUp, ...existingFollowUps]
+        };
+      })
+    );
+    addNotification(`Follow-up activity logged for Claim ${claimId}`, 'info');
+  };
+
+  const updateClaimSettlement = (claimId, settlementUpdates) => {
+    setClaims((prev) =>
+      prev.map((c) => {
+        if (c.id !== claimId) return c;
+        return {
+          ...c,
+          ...settlementUpdates,
+          settlementStatus: settlementUpdates.settlementStatus || c.settlementStatus,
+          approvedAmount: settlementUpdates.approvedAmount !== undefined ? settlementUpdates.approvedAmount : c.approvedAmount,
+          bankRefNo: settlementUpdates.bankRefNo || c.bankRefNo
+        };
+      })
+    );
+    addNotification(`Settlement parameters updated for Claim ${claimId}`, 'success');
+  };
+
+  // Towing / Roadside Assistance Actions
+  const addTowingJob = (jobData) => {
+    const newJob = {
+      ...jobData,
+      id: jobData.id || `TOW-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`,
+      billNo: jobData.billNo || `TOW-BILL-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`
+    };
+    setTowingJobs((prev) => [newJob, ...prev]);
+    addNotification(`Towing Job Dispatched: ${newJob.id} (${newJob.vehicleNumber})`, 'success');
+    addAuditLog(`Emergency Towing Dispatched (${newJob.id})`, newJob.vehicleNumber);
+    return newJob;
+  };
+
+  const updateTowingJob = (jobId, updates) => {
+    setTowingJobs((prev) =>
+      prev.map((j) => (j.id === jobId ? { ...j, ...updates } : j))
+    );
+    addNotification(`Towing Job ${jobId} updated`, 'info');
+  };
+
   // 3. Renewals Actions
   const sendRenewalReminder = (policyId, method = 'WhatsApp') => {
     addNotification(`30-Day Renewal reminder sent via ${method} for Policy ${policyId}`, 'info');
@@ -529,11 +743,24 @@ export function AppDataProvider({ children }) {
         setGlobalSearch,
         policies,
         claims,
+        claimsFilter,
+        setClaimsFilter,
+        navigateToClaimsWithFilter,
+        checkPolicyClaimStatus,
         selectedClaimId,
         setSelectedClaimId,
         navigateToClaim,
         showRegisterClaimModal,
         setShowRegisterClaimModal,
+        showTowingModal,
+        setShowTowingModal,
+        towingJobs,
+        addTowingJob,
+        updateTowingJob,
+        updateClaimDocument,
+        addClaimBill,
+        addClaimFollowUp,
+        updateClaimSettlement,
         loans,
         employees,
         leaves,

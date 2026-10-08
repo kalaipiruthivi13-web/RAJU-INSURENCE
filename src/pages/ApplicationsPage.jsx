@@ -23,8 +23,10 @@ export function ApplicationsPage() {
   const [subTab, setSubTab] = useState('NEW'); // 'NEW' | 'DRAFTS' | 'PENDING' | 'COMPLETED'
 
   useEffect(() => {
-    if (activeTab === 'motor-insurance' || activeTab === 'health-insurance' || activeTab === 'wizard' || activeTab === 'applications') {
+    if (activeTab === 'motor-insurance' || activeTab === 'health-insurance' || activeTab === 'wizard') {
       setSubTab('NEW');
+    } else if (activeTab === 'applications') {
+      setSubTab('PENDING');
     }
   }, [activeTab]);
 
@@ -128,11 +130,11 @@ export function ApplicationsPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Sub-Tab Navigation Header */}
-      <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight">
+          <h1 className="text-base sm:text-lg font-black text-[#0F172A] tracking-tight">
             Insurance Applications Hub
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -141,20 +143,19 @@ export function ApplicationsPage() {
         </div>
 
         {/* Sub-Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
           {[
-            { id: 'NEW', label: '+ New Application' },
-            { id: 'DRAFTS', label: 'Drafts (1)' },
             { id: 'PENDING', label: 'Pending Approvals (1)' },
+            { id: 'DRAFTS', label: 'Drafts (1)' },
             { id: 'COMPLETED', label: 'Completed' }
           ].map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setSubTab(tab.id)}
-              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 subTab === tab.id
-                  ? 'bg-[#2563EB] text-white shadow-xs'
+                  ? 'bg-[#2563EB] text-white shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -175,15 +176,6 @@ export function ApplicationsPage() {
               {subTab === 'PENDING' && 'Applications Awaiting Underwriting Sign-Off'}
               {subTab === 'COMPLETED' && 'Recently Issued & Bound Applications'}
             </h2>
-            <Button
-              variant="primary"
-              size="sm"
-              icon={Plus}
-              onClick={() => setSubTab('NEW')}
-              className="bg-[#2563EB] text-white"
-            >
-              New Application
-            </Button>
           </div>
 
           <DataTable

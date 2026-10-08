@@ -560,17 +560,17 @@ export function InsurancePage() {
   // ==========================================
   if (funnelStep === 'MOTOR_PRODUCT') {
     return (
-      <div className="space-y-6 animate-in fade-in duration-200">
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-[#E2E8F0] shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+      <div className="space-y-4 animate-in fade-in duration-200">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-[#E2E8F0] shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-400">Applications ➔ Motor Insurance</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-400">Applications ➔ Motor Insurance</span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight mt-1">
+              <h1 className="text-base sm:text-lg font-black text-[#0F172A] tracking-tight mt-0.5">
                 Select Motor Product
               </h1>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500">
                 Choose vehicle category to configure underwriting rules and coverage limits
               </p>
             </div>
@@ -580,23 +580,24 @@ export function InsurancePage() {
               size="sm"
               icon={ArrowLeft}
               onClick={() => setFunnelStep('CATEGORY')}
+              className="py-1 px-3 text-xs"
             >
-              Back to Categories
+              Back
             </Button>
           </div>
 
           {/* Quick Vehicle Tabs: Car or Bike */}
-          <div className="flex items-center gap-2 mt-5 p-1.5 bg-slate-100 rounded-2xl max-w-md">
+          <div className="flex items-center gap-1.5 mt-3.5 p-1 bg-slate-100 rounded-xl max-w-sm">
             <button
               type="button"
               onClick={() => {
                 setMotorProduct('CAR');
                 setFunnelStep('MOTOR_INTENT');
               }}
-              className="flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 bg-white text-[#2563EB] shadow-xs cursor-pointer hover:bg-blue-50 border border-blue-100"
+              className="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-white text-[#2563EB] shadow-2xs cursor-pointer hover:bg-blue-50 border border-blue-100"
             >
-              <span className="text-base">🚗</span>
-              <span>Car Insurance Tab</span>
+              <span>🚗</span>
+              <span>Car</span>
             </button>
             <button
               type="button"
@@ -604,66 +605,66 @@ export function InsurancePage() {
                 setMotorProduct('TWO_WHEELER');
                 setFunnelStep('MOTOR_INTENT');
               }}
-              className="flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 bg-white text-[#0F172A] shadow-xs cursor-pointer hover:bg-slate-50 border border-slate-200"
+              className="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-white text-[#0F172A] shadow-2xs cursor-pointer hover:bg-slate-50 border border-slate-200"
             >
-              <span className="text-base">🏍️</span>
-              <span>Bike / Two Wheeler Tab</span>
+              <span>🏍️</span>
+              <span>Two Wheeler</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 max-w-4xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-4 max-w-3xl">
             {/* Car Insurance */}
-            <div className="p-6 rounded-2xl border-2 border-slate-200 hover:border-[#2563EB] hover:shadow-md transition-all flex flex-col justify-between bg-white group">
+            <div className="p-4 rounded-xl border border-slate-200 hover:border-[#2563EB] hover:shadow-xs transition-all flex flex-col justify-between bg-white group">
               <div>
-                <div className="w-14 h-14 rounded-2xl bg-blue-50 text-3xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-xs border border-blue-100">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-xl flex items-center justify-center mb-2.5 border border-blue-100">
                   🚗
                 </div>
-                <h2 className="text-xl font-black text-[#0F172A]">Car Insurance</h2>
-                <p className="text-xs font-bold text-[#2563EB] mt-0.5">Private 4-Wheeler Passenger Cars</p>
-                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  Comprehensive & Third-Party covers for Hatchbacks, Sedans, MUVs and SUVs. Includes Zero Depreciation, Engine Protect & 24x7 RSA.
+                <h2 className="text-sm sm:text-base font-black text-[#0F172A]">Car Insurance</h2>
+                <p className="text-[11px] font-bold text-[#2563EB] mt-0.5">Private 4-Wheeler Passenger Cars</p>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  Comprehensive & Third-Party covers for Hatchbacks, Sedans, MUVs and SUVs. Includes Zero Depreciation & RSA.
                 </p>
               </div>
 
-              <div className="pt-6 mt-6 border-t border-slate-100">
+              <div className="pt-3 mt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => {
                     setMotorProduct('CAR');
                     setFunnelStep('MOTOR_INTENT');
                   }}
-                  className="w-full py-2.5 px-4 rounded-xl font-black text-xs text-white bg-[#2563EB] hover:bg-blue-700 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-2 px-3 rounded-lg font-bold text-xs text-white bg-[#2563EB] hover:bg-blue-700 transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>Select Car Insurance</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
             {/* Two Wheeler Insurance */}
-            <div className="p-6 rounded-2xl border-2 border-slate-200 hover:border-[#2563EB] hover:shadow-md transition-all flex flex-col justify-between bg-white group">
+            <div className="p-4 rounded-xl border border-slate-200 hover:border-[#2563EB] hover:shadow-xs transition-all flex flex-col justify-between bg-white group">
               <div>
-                <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-3xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-xs border border-indigo-100">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-xl flex items-center justify-center mb-2.5 border border-indigo-100">
                   🏍️
                 </div>
-                <h2 className="text-xl font-black text-[#0F172A]">Two Wheeler Insurance</h2>
-                <p className="text-xs font-bold text-indigo-600 mt-0.5">Motorcycles & Scooters</p>
-                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  Fast quotes for Commuter, Sports, Scooters and EV Two-Wheelers. Multi-year TP compliance and standalone OD add-on packs.
+                <h2 className="text-sm sm:text-base font-black text-[#0F172A]">Two Wheeler Insurance</h2>
+                <p className="text-[11px] font-bold text-indigo-600 mt-0.5">Motorcycles & Scooters</p>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  Fast quotes for Commuter, Sports, Scooters and EV Two-Wheelers. Multi-year TP compliance and standalone OD add-ons.
                 </p>
               </div>
 
-              <div className="pt-6 mt-6 border-t border-slate-100">
+              <div className="pt-3 mt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => {
                     setMotorProduct('TWO_WHEELER');
                     setFunnelStep('MOTOR_INTENT');
                   }}
-                  className="w-full py-2.5 px-4 rounded-xl font-black text-xs text-white bg-[#0F172A] hover:bg-slate-800 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-2 px-3 rounded-lg font-bold text-xs text-white bg-[#0F172A] hover:bg-slate-800 transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>Select Two Wheeler</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -679,20 +680,20 @@ export function InsurancePage() {
   if (funnelStep === 'MOTOR_INTENT') {
     const isCar = motorProduct === 'CAR';
     return (
-      <div className="space-y-6 animate-in fade-in duration-200">
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-[#E2E8F0] shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+      <div className="space-y-4 animate-in fade-in duration-200">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-[#E2E8F0] shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-400">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-400">
                   Motor ➔ {isCar ? 'Car Insurance' : 'Two Wheeler Insurance'}
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight mt-1">
+              <h1 className="text-base sm:text-lg font-black text-[#0F172A] tracking-tight mt-0.5">
                 {isCar ? 'Car Insurance' : 'Two Wheeler Insurance'}
               </h1>
               <p className="text-xs font-semibold text-slate-600 mt-0.5">
-                What would you like to do?
+                Select application workflow:
               </p>
             </div>
 
@@ -701,37 +702,38 @@ export function InsurancePage() {
               size="sm"
               icon={ArrowLeft}
               onClick={() => setFunnelStep('MOTOR_PRODUCT')}
+              className="py-1 px-3 text-xs"
             >
-              Back to Product Selection
+              Back
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 max-w-4xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-4 max-w-3xl">
             {/* Intent 1: New Vehicle */}
-            <div className="p-6 rounded-2xl border-2 border-slate-200 hover:border-[#2563EB] hover:shadow-md transition-all flex flex-col justify-between bg-white group">
+            <div className="p-4 rounded-xl border border-slate-200 hover:border-[#2563EB] hover:shadow-xs transition-all flex flex-col justify-between bg-white group">
               <div>
-                <div className="w-14 h-14 rounded-2xl bg-blue-50 text-3xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-xs border border-blue-100">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-xl flex items-center justify-center mb-2.5 border border-blue-100">
                   🆕
                 </div>
-                <h2 className="text-xl font-black text-[#0F172A]">Buy Insurance for New Vehicle</h2>
-                <p className="text-xs font-bold text-[#2563EB] mt-0.5">Get quotes from multiple insurers</p>
-                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  For brand new vehicles purchased from showroom. Zero depreciation IDV schedule with mandatory multi-year Third Party cover.
+                <h2 className="text-sm sm:text-base font-black text-[#0F172A]">Buy Insurance for New Vehicle</h2>
+                <p className="text-[11px] font-bold text-[#2563EB] mt-0.5">Showroom & Unregistered Vehicles</p>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  For brand new vehicles purchased from showroom. Zero depreciation IDV schedule with multi-year TP cover.
                 </p>
 
-                <div className="mt-4 space-y-1.5 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <div className="flex items-center gap-2">
+                <div className="mt-3 space-y-1 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                  <div className="flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Unregistered / Temporary / TR Number</span>
+                    <span>Unregistered / Temporary TR Number</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Auto 5% Showroom Depreciation IDV</span>
+                    <span>Auto Showroom Depreciation Schedule</span>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-6 mt-6 border-t border-slate-100">
+              <div className="pt-3 mt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => {
@@ -739,7 +741,7 @@ export function InsurancePage() {
                     setFunnelStep('WIZARD');
                     setCurrentStep(1);
                   }}
-                  className="w-full py-2.5 px-4 rounded-xl font-black text-xs text-white bg-[#2563EB] hover:bg-blue-700 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-2 px-3 rounded-lg font-bold text-xs text-white bg-[#2563EB] hover:bg-blue-700 transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>Continue →</span>
                 </button>
@@ -747,37 +749,37 @@ export function InsurancePage() {
             </div>
 
             {/* Intent 2: Renew Existing Policy */}
-            <div className="p-6 rounded-2xl border-2 border-slate-200 hover:border-[#2563EB] hover:shadow-md transition-all flex flex-col justify-between bg-white group">
+            <div className="p-4 rounded-xl border border-slate-200 hover:border-[#2563EB] hover:shadow-xs transition-all flex flex-col justify-between bg-white group">
               <div>
-                <div className="w-14 h-14 rounded-2xl bg-amber-50 text-3xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-xs border border-amber-100">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-xl flex items-center justify-center mb-2.5 border border-amber-100">
                   🔄
                 </div>
-                <h2 className="text-xl font-black text-[#0F172A]">Renew Existing Policy</h2>
-                <p className="text-xs font-bold text-amber-700 mt-0.5">from Any Insurer</p>
-                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  Compare renewal quotes from partner insurers. Rollover earned No Claim Bonus (NCB up to 50%) and switch insurer effortlessly.
+                <h2 className="text-sm sm:text-base font-black text-[#0F172A]">Renew Existing Policy</h2>
+                <p className="text-[11px] font-bold text-amber-700 mt-0.5">Rollover from Any Insurer</p>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  Compare renewal quotes from partner insurers. Rollover earned No Claim Bonus (NCB up to 50%) effortlessly.
                 </p>
 
-                <div className="mt-4 space-y-1.5 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <div className="flex items-center gap-2">
+                <div className="mt-3 space-y-1 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                  <div className="flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Rollover NCB from any existing insurer</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Instant renewal without inspection waiver</span>
+                    <span>Instant renewal without inspection delay</span>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-6 mt-6 border-t border-slate-100">
+              <div className="pt-3 mt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => {
                     setMotorIntent('RENEWAL');
                     setFunnelStep('RENEWAL_LOOKUP');
                   }}
-                  className="w-full py-2.5 px-4 rounded-xl font-black text-xs text-white bg-[#0F172A] hover:bg-slate-800 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-2 px-3 rounded-lg font-bold text-xs text-white bg-[#0F172A] hover:bg-slate-800 transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>Continue →</span>
                 </button>
@@ -832,22 +834,22 @@ export function InsurancePage() {
     };
 
     return (
-      <div className="space-y-6 animate-in fade-in duration-200 max-w-3xl mx-auto">
-        <form onSubmit={handleRenewalLookupSubmit} className="bg-white p-6 sm:p-8 rounded-2xl border border-[#E2E8F0] shadow-md space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+      <div className="space-y-4 animate-in fade-in duration-200 max-w-2xl mx-auto">
+        <form onSubmit={handleRenewalLookupSubmit} className="bg-white p-4 sm:p-5 rounded-xl border border-[#E2E8F0] shadow-2xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                   {isTwoWheeler ? '🏍️ Two Wheeler Renewal' : '🚗 Car Renewal'}
                 </span>
-                <span className="text-xs font-bold text-slate-400">
+                <span className="text-[11px] font-bold text-slate-400">
                   {isTwoWheeler ? 'Two Wheeler Insurance' : 'Car Insurance'}
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight mt-1">
+              <h1 className="text-base sm:text-lg font-black text-[#0F172A] tracking-tight mt-0.5">
                 {isTwoWheeler ? 'Two Wheeler Policy Renewal' : 'Renew Existing Motor Policy'}
               </h1>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500">
                 Enter your Vehicle Registration Number to fetch policy details & renew instantly
               </p>
             </div>
@@ -857,6 +859,7 @@ export function InsurancePage() {
               size="sm"
               icon={ArrowLeft}
               onClick={() => setFunnelStep('MOTOR_INTENT')}
+              className="py-1 px-3 text-xs"
             >
               Back
             </Button>
@@ -1064,19 +1067,19 @@ export function InsurancePage() {
   // 8-STEP DYNAMIC INSURANCE WIZARD
   // ==========================================
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Wizard Header & Stepper */}
-      <div className="bg-white p-6 sm:p-7 rounded-2xl border border-[#E2E8F0] shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight">
+              <h1 className="text-base sm:text-lg font-black text-[#0F172A] tracking-tight">
                 {insuranceCategory === 'HEALTH' ? 'Health Insurance Application Portal' : 'New Insurance Application'}
               </h1>
-              <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-[#2563EB] text-white shadow-xs">
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#2563EB] text-white shadow-2xs">
                 MNC Engine
               </span>
-              <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
+              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
                 insuranceCategory === 'MOTOR'
                   ? 'bg-blue-50 text-[#2563EB] border border-blue-200'
                   : 'bg-teal-50 text-teal-800 border border-teal-300 font-black'
@@ -1086,10 +1089,10 @@ export function InsurancePage() {
                   : '🏥 Health & Mediclaim Portal'}
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 mt-0.5">
               {insuranceCategory === 'HEALTH'
-                ? 'Individual, Family Floater & Senior Citizen Mediclaim underwriting, auto-BMI calculation, and partner hospital comparison.'
-                : 'Complete the 8-step application to generate quotes, verify underwriting parameters, and bind policy.'}
+                ? 'Individual, Family Floater & Senior Citizen Mediclaim underwriting and comparison.'
+                : 'Complete the 8-step application to generate quotes and bind policy.'}
             </p>
           </div>
 
@@ -1097,11 +1100,11 @@ export function InsurancePage() {
             <button
               type="button"
               onClick={() => setFunnelStep('CATEGORY')}
-              className="text-xs font-semibold text-slate-500 hover:text-slate-800 px-3 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
+              className="text-xs font-semibold text-slate-500 hover:text-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
             >
-              ← Change Product / Flow
+              ← Change Product
             </button>
-            <span className="text-xs font-bold px-3 py-1 bg-blue-50 text-[#2563EB] rounded-full border border-blue-200">
+            <span className="text-xs font-bold px-2.5 py-1 bg-blue-50 text-[#2563EB] rounded-full border border-blue-200">
               Step {currentStep} of 8: {steps[currentStep - 1].label}
             </span>
           </div>
@@ -1109,7 +1112,7 @@ export function InsurancePage() {
 
         {/* Stepper Progress Bar */}
         <div className="relative">
-          <div className="overflow-hidden h-2 mb-4 text-xs flex rounded-full bg-slate-100">
+          <div className="overflow-hidden h-1.5 mb-3 text-xs flex rounded-full bg-slate-100">
             <div
               style={{ width: `${((currentStep - 1) / 7) * 100}%` }}
               className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-[#2563EB] transition-all duration-300 rounded-full"

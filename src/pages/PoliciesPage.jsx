@@ -11,6 +11,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
+import OperationsSubNavBar from '../components/layout/OperationsSubNavBar';
 import DataTable from '../components/ui/DataTable';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -32,6 +33,8 @@ export function PoliciesPage() {
         p.companyName.toLowerCase().includes(term) ||
         p.id.toLowerCase().includes(term) ||
         p.policyType.toLowerCase().includes(term) ||
+        (p.phone && p.phone.toLowerCase().includes(term)) ||
+        (p.email && p.email.toLowerCase().includes(term)) ||
         (p.vehicleNumber && p.vehicleNumber.toLowerCase().includes(term))
       );
     }
@@ -203,6 +206,9 @@ export function PoliciesPage() {
 
   return (
     <div className="space-y-3" onClick={() => setActiveMenuId(null)}>
+      {/* 1. Operations Sub-Navigation Bar */}
+      <OperationsSubNavBar activeItem="policies" />
+
       {/* Header - Compact */}
       <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -258,7 +264,7 @@ export function PoliciesPage() {
         <DataTable
           columns={columns}
           data={filteredPolicies}
-          searchPlaceholder="Search policies by client, vehicle, policy ID, or carrier..."
+          searchPlaceholder="Search by Policy No, Customer Name, Mobile, Vehicle Registration, Carrier..."
           emptyMessage="No policies match current filter"
         />
       </div>
