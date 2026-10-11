@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Truck,
@@ -11,7 +11,7 @@ import {
   Clock,
   ShieldCheck,
   Building2,
-  DollarSign,
+  IndianRupee,
   FileText,
   Receipt,
   Download,
@@ -20,20 +20,31 @@ import {
   Upload,
   Check,
   ChevronRight,
+  ChevronLeft,
   Layers,
-  FileSpreadsheet,
   AlertCircle,
   Eye,
   X,
   Lock,
   Unlock,
-  FilePlus2,
-  Sparkles
+  FilePlus2
 } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
+import DocumentScanDropzone from '../common/DocumentScanDropzone';
 import { useAppData } from '../../context/AppDataContext';
+
+// Shared Indian Rupee Currency Formatter
+export const formatINR = (amount, decimals = 2) => {
+  const num = Number(amount) || 0;
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  }).format(num);
+};
 
 const BLANK_JOB_TEMPLATE = {
   id: '',
@@ -90,6 +101,16 @@ const BLANK_JOB_TEMPLATE = {
   ]
 };
 
+// 6 Structured Tabs Definition
+export const TOWING_TABS = [
+  { id: 'REQUEST', fullLabel: '1. Request', shortLabel: '1. Req', icon: MapPin },
+  { id: 'DETAILS', fullLabel: '2. Towing Details', shortLabel: '2. Details', icon: Truck },
+  { id: 'CHARGES', fullLabel: '3. Charges & Rates', shortLabel: '3. Charges', icon: IndianRupee },
+  { id: 'DOCS', fullLabel: '4. Documents & Proof', shortLabel: '4. Docs', icon: FileText },
+  { id: 'PAYMENT', fullLabel: '5. Payment Details', shortLabel: '5. Payment', icon: Receipt },
+  { id: 'BILLING', fullLabel: '6. Billing & Invoice', shortLabel: '6. Invoice', icon: Printer }
+];
+
 export function TowingRequestModal({ isOpen, onClose }) {
   const {
     currentUser,
@@ -101,8 +122,11 @@ export function TowingRequestModal({ isOpen, onClose }) {
     addAuditLog
   } = useAppData();
 
-  const [activeTab, setActiveTab] = useState('REQUEST'); // 'REQUEST' | 'DETAILS' | 'CHARGES' | 'DOCS' | 'BILLING'
+  const [activeTab, setActiveTab] = useState('REQUEST');
   const [selectedJobId, setSelectedJobId] = useState(towingJobs?.[0]?.id || 'NEW');
+
+  const activeTabButtonRef = useRef(null);
+  const initialSnapshotRef = useRef(null);
 
   // Filter active motor policies
   const motorPolicies = useMemo(() => {
@@ -118,7 +142,7 @@ export function TowingRequestModal({ isOpen, onClose }) {
     });
   }, [policies]);
 
-  // Comprehensive Form State
+  // Form State
   const [formData, setFormData] = useState(() => {
     const existing = towingJobs?.[0];
     if (existing) return { ...existing };
@@ -140,27 +164,106 @@ export function TowingRequestModal({ isOpen, onClose }) {
   useEffect(() => {
     if (selectedJobId === 'NEW') {
       const year = new Date().getFullYear();
-      setFormData({
+      const blank = {
         ...BLANK_JOB_TEMPLATE,
         id: `TOW-${year}-${Math.floor(10000 + Math.random() * 90000)}`,
         requestDateTime: new Date().toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }),
         jobStatus: 'Draft',
         billNo: ''
-      });
+      };
+      setFormData(blank);
       setValidationErrors({});
+      initialSnapshotRef.current = JSON.stringify(blank);
     } else {
       const found = towingJobs?.find((j) => j.id === selectedJobId);
       if (found) {
         setFormData({ ...found });
         setValidationErrors({});
+        initialSnapshotRef.current = JSON.stringify(found);
       }
     }
   }, [selectedJobId, towingJobs]);
+
+  // Scroll active tab into view when active tab changes
+  useEffect(() => {
+    if (activeTabButtonRef.current) {
+      activeTabButtonRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest'
+      });
+    }
+  }, [activeTab]);
 
   // Role-Based Locking
   const isCompleted = formData.jobStatus === 'Completed';
   const isAdmin = currentUser?.role === 'ADMIN';
   const isLocked = isCompleted && !isAdmin;
+
+  // Unsaved changes check
+  const isDirty = useMemo(() => {
+    if (!initialSnapshotRef.current) return false;
+    return JSON.stringify(formData) !== initialSnapshotRef.current;
+  }, [formData]);
+
+  const handleCloseRequest = () => {
+    if (isDirty) {
+      const confirmed = window.confirm('Discard changes? Any unsaved edits made to this towing request will be lost.');
+      if (!confirmed) return;
+    }
+    onClose();
+  };
+
+  // Smart Document Scan Notice & Handler
+  const [scanNotice, setScanNotice] = useState(null);
+
+  const handleScanComplete = (extractedData, res) => {
+    if (isLocked || !extractedData) return;
+    const updated = { ...formData };
+    const filledKeys = [];
+
+    if (extractedData.clientName || extractedData.customerName) {
+      updated.clientName = extractedData.clientName || extractedData.customerName;
+      filledKeys.push('Client Name');
+    }
+    if (extractedData.vehicleNumber || extractedData.vehicleNo) {
+      updated.vehicleNumber = extractedData.vehicleNumber || extractedData.vehicleNo;
+      filledKeys.push('Vehicle Reg');
+    }
+    if (extractedData.phone || extractedData.mobile) {
+      updated.phone = extractedData.phone || extractedData.mobile;
+      filledKeys.push('Phone');
+    }
+    if (extractedData.policyNumber || extractedData.policyNo) {
+      updated.policyNumber = extractedData.policyNumber || extractedData.policyNo;
+      filledKeys.push('Policy No');
+    }
+    if (extractedData.breakdownLocation) {
+      updated.breakdownLocation = extractedData.breakdownLocation;
+      filledKeys.push('Breakdown Spot');
+    }
+    if (extractedData.destinationWorkshop) {
+      updated.destinationWorkshop = extractedData.destinationWorkshop;
+      filledKeys.push('Workshop');
+    }
+    if (extractedData.actualDistanceKm) {
+      updated.actualDistanceKm = Number(extractedData.actualDistanceKm);
+      filledKeys.push('Distance KM');
+    }
+    if (extractedData.towType) {
+      updated.towType = extractedData.towType;
+    }
+    if (extractedData.vehicleCondition) {
+      updated.vehicleCondition = extractedData.vehicleCondition;
+    }
+
+    setFormData(updated);
+    setValidationErrors({});
+    setScanNotice(`✨ Scanned ${res?.documentType || 'Document'} successfully! Auto-filled: ${filledKeys.join(', ')}.`);
+    if (addNotification) {
+      addNotification(`Towing details auto-filled from document scan (${filledKeys.length} fields)`, 'success');
+    }
+  };
 
   // Policy Selection Handler
   const handlePolicySelect = (policyId) => {
@@ -174,7 +277,6 @@ export function TowingRequestModal({ isOpen, onClose }) {
         clientName: selected.clientName || prev.clientName,
         phone: selected.phone || prev.phone
       }));
-      // Clear relevant errors
       setValidationErrors((prev) => {
         const next = { ...prev };
         delete next.vehicleNumber;
@@ -254,7 +356,7 @@ export function TowingRequestModal({ isOpen, onClose }) {
     const isCoverageExceeded = grandTotal > availableBalance;
     const exceededAmount = isCoverageExceeded ? grandTotal - availableBalance : 0;
 
-    // Active Itemized Line Items for clean printing
+    // Active Itemized Line Items for clean bill & invoice
     const lineItems = [];
     if (baseTow > 0) {
       lineItems.push({
@@ -267,7 +369,7 @@ export function TowingRequestModal({ isOpen, onClose }) {
     if (distanceCharge > 0) {
       lineItems.push({
         id: 'item-dist',
-        description: `Additional Transit Distance (${additionalKm.toFixed(1)} KM @ ₹${ratePerKm}/KM)`,
+        description: `Additional Transit Distance (${additionalKm.toFixed(1)} KM @ ${formatINR(ratePerKm)}/KM)`,
         qty: `${additionalKm.toFixed(1)} KM`,
         amount: distanceCharge
       });
@@ -299,7 +401,7 @@ export function TowingRequestModal({ isOpen, onClose }) {
     if (labourHourlyTotal > 0) {
       lineItems.push({
         id: 'item-extra-hrs',
-        description: `Additional Labour Detention (${additionalLabourHours} hrs @ ₹${labourRatePerHour}/hr)`,
+        description: `Additional Labour Detention (${additionalLabourHours} hrs @ ${formatINR(labourRatePerHour)}/hr)`,
         qty: `${additionalLabourHours} hrs`,
         amount: labourHourlyTotal
       });
@@ -405,13 +507,14 @@ export function TowingRequestModal({ isOpen, onClose }) {
       setSelectedJobId(created.id);
     }
 
+    initialSnapshotRef.current = JSON.stringify(updatedJob);
     setSaveSuccessMessage('Draft saved successfully! (Status: Draft)');
     setTimeout(() => setSaveSuccessMessage(null), 3500);
   };
 
   // Action 2: "Save & Complete Job"
   // Requires all 7 core job details. Allows Payment Status as "Pending / Unpaid".
-  // Generates official Bill Number ONCE. Locks completed job.
+  // Generates official Bill Number ONCE. Locks completed job for non-admins.
   const handleSaveAndComplete = (e) => {
     if (e) e.preventDefault();
     if (isLocked) return;
@@ -487,60 +590,9 @@ export function TowingRequestModal({ isOpen, onClose }) {
     }
 
     setFormData(completedJob);
+    initialSnapshotRef.current = JSON.stringify(completedJob);
     setSaveSuccessMessage(`Job Completed successfully! Official Bill #${finalBillNo} generated.`);
     setTimeout(() => setSaveSuccessMessage(null), 4000);
-  };
-
-  // Test Preset: Short Bill (1-2 charge lines, fits on 1 page)
-  const handleLoadShortBillPreset = () => {
-    if (isLocked) return;
-    setFormData((prev) => ({
-      ...prev,
-      actualDistanceKm: 15,
-      baseTowingCharge: 450,
-      baseIncludedKm: 10,
-      ratePerKm: 25,
-      labourTowing: 0,
-      labourRecovery: 0,
-      labourLoading: 0,
-      labourAdditionalHours: 0,
-      actualWaitingMin: 0,
-      tollChargeAmount: 0,
-      parkingChargeAmount: 0,
-      otherChargeAmount: 0,
-      nightChargeEnabled: false,
-      expressChargeEnabled: false
-    }));
-    setSaveSuccessMessage('Loaded Short Bill Preset (2 charge lines: Base Tow + Distance). Prints on 1 page!');
-    setTimeout(() => setSaveSuccessMessage(null), 3000);
-  };
-
-  // Test Preset: Long Bill (many charge lines, multi-page break)
-  const handleLoadLongBillPreset = () => {
-    if (isLocked) return;
-    setFormData((prev) => ({
-      ...prev,
-      actualDistanceKm: 32,
-      baseTowingCharge: 450,
-      baseIncludedKm: 10,
-      ratePerKm: 25,
-      labourTowing: 200,
-      labourRecovery: 150,
-      labourLoading: 100,
-      labourAdditionalHours: 2,
-      labourRatePerHour: 150,
-      actualWaitingMin: 75,
-      waitingRatePer30Min: 100,
-      tollChargeAmount: 150,
-      parkingChargeAmount: 100,
-      otherChargeAmount: 80,
-      nightChargeEnabled: true,
-      nightChargeAmount: 200,
-      expressChargeEnabled: true,
-      expressChargeAmount: 150
-    }));
-    setSaveSuccessMessage('Loaded Long Bill Preset (12 line items). Paginates cleanly without trailing blank pages!');
-    setTimeout(() => setSaveSuccessMessage(null), 3000);
   };
 
   const handlePrint = () => {
@@ -548,75 +600,143 @@ export function TowingRequestModal({ isOpen, onClose }) {
   };
 
   const handleSendToCustomer = () => {
+    const billRef = formData.billNo || 'PROVISIONAL DRAFT';
+    const whatsappText = encodeURIComponent(
+      `RAJU VENDOR - Roadside Assistance & Towing Bill\n` +
+      `Bill Reference: ${billRef}\n` +
+      `Customer: ${formData.clientName}\n` +
+      `Vehicle: ${formData.vehicleNumber}\n` +
+      `Route: ${formData.breakdownLocation} -> ${formData.destinationWorkshop} (${formData.actualDistanceKm} KM)\n` +
+      `Gross Amount: ${formatINR(calc.grossAmount)}\n` +
+      `GST (18%): ${formatINR(calc.gstAmount)}\n` +
+      `Total Amount: ${formatINR(calc.grandTotal)}\n` +
+      `Insurance Covered: ${formatINR(calc.insuranceCovered)}\n` +
+      `Net Customer Payable: ${formatINR(calc.customerPayable)}\n` +
+      `Payment Status: ${formData.paymentStatus}`
+    );
+
     if (addNotification) {
       addNotification(`Towing invoice dispatched via SMS & WhatsApp to ${formData.phone}`, 'success');
     }
     if (addAuditLog) {
       addAuditLog(`Towing invoice sent to customer`, formData.vehicleNumber);
     }
-    alert(`Towing bill summary sent via WhatsApp & SMS to ${formData.phone}`);
+    window.open(`https://wa.me/?text=${whatsappText}`, '_blank');
+  };
+
+  // Active tab index for Next/Back logic
+  const activeTabIndex = TOWING_TABS.findIndex((t) => t.id === activeTab);
+  const isLastTab = activeTabIndex === TOWING_TABS.length - 1; // Tab 6: BILLING
+
+  const handleNextTab = () => {
+    if (activeTabIndex < TOWING_TABS.length - 1) {
+      setActiveTab(TOWING_TABS[activeTabIndex + 1].id);
+    }
+  };
+
+  const handlePrevTab = () => {
+    if (activeTabIndex > 0) {
+      setActiveTab(TOWING_TABS[activeTabIndex - 1].id);
+    }
   };
 
   return (
     <>
       <Modal
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={handleCloseRequest}
         title="Roadside Assistance & Towing Request"
         subtitle="24x7 Emergency Dispatch, KM Charging, Labour Breakdown & Official Billing"
-        size="xl"
-        footer={
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-            <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
+        maxWidth="max-w-5xl"
+        className="max-h-[92vh]"
+        headerAction={
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                 formData.jobStatus === 'Completed'
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                   : formData.jobStatus === 'Draft'
                   ? 'bg-slate-100 text-slate-700 border-slate-300'
                   : 'bg-blue-50 text-blue-800 border-blue-300'
-              }`}>
-                {formData.jobStatus === 'Completed' ? <Lock className="w-3 h-3 text-emerald-700" /> : <Clock className="w-3 h-3 text-slate-500" />}
-                Status: {formData.jobStatus}
-              </span>
+              }`}
+            >
+              {formData.jobStatus === 'Completed' ? (
+                <Lock className="w-3 h-3 text-emerald-700" />
+              ) : (
+                <Clock className="w-3 h-3 text-slate-500" />
+              )}
+              Status: {formData.jobStatus}
+            </span>
 
-              {formData.billNo && (
-                <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                  Bill #{formData.billNo}
-                </span>
+            {formData.billNo && (
+              <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                Bill #{formData.billNo}
+              </span>
+            )}
+          </div>
+        }
+        footer={
+          <div className="flex items-center justify-between gap-3 w-full">
+            <div>
+              {activeTabIndex > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrevTab}
+                  icon={ChevronLeft}
+                  className="text-xs font-bold border-slate-300 text-slate-700 hover:bg-slate-100"
+                >
+                  Back
+                </Button>
               )}
             </div>
 
-            <div className="flex items-center gap-2 justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onClose}
-                className="text-xs"
-              >
-                Close
-              </Button>
+            <div className="flex items-center gap-2">
+              {!isLastTab ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleNextTab}
+                  icon={ChevronRight}
+                  iconPosition="right"
+                  className="bg-[#1E4E8C] hover:bg-[#0B1E3D] text-xs font-bold text-white shadow-xs"
+                >
+                  Next
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCloseRequest}
+                    className="text-xs"
+                  >
+                    Close
+                  </Button>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSaveDraft}
-                disabled={isLocked}
-                className="text-xs font-bold border-slate-300 text-slate-700 hover:bg-slate-100"
-              >
-                Save (Draft)
-              </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveDraft}
+                    disabled={isLocked}
+                    className="text-xs font-bold border-slate-300 text-slate-700 hover:bg-slate-100"
+                  >
+                    Save (Draft)
+                  </Button>
 
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleSaveAndComplete}
-                disabled={isLocked}
-                className={`text-xs font-bold text-white shadow-xs ${
-                  isLocked ? 'bg-slate-400 cursor-not-allowed' : 'bg-emerald-700 hover:bg-emerald-800'
-                }`}
-              >
-                Save & Complete Job
-              </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSaveAndComplete}
+                    disabled={isLocked}
+                    className={`text-xs font-bold text-white shadow-xs ${
+                      isLocked ? 'bg-slate-400 cursor-not-allowed' : 'bg-emerald-700 hover:bg-emerald-800'
+                    }`}
+                  >
+                    Save & Complete Job
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         }
@@ -716,15 +836,9 @@ export function TowingRequestModal({ isOpen, onClose }) {
             </div>
           )}
 
-          {/* 5 Operational Tabs */}
-          <div className="flex items-center border-b border-slate-200 bg-slate-50/60 -mx-6 -mt-1 px-6 pt-1.5 overflow-x-auto">
-            {[
-              { id: 'REQUEST', label: '1. Request', icon: MapPin },
-              { id: 'DETAILS', label: '2. Towing Details', icon: Truck },
-              { id: 'CHARGES', label: '3. Charges & Rates', icon: DollarSign },
-              { id: 'DOCS', label: '4. Documents & Proof', icon: FileText },
-              { id: 'BILLING', label: '5. Billing & Invoice', icon: Receipt }
-            ].map((tab) => {
+          {/* 6 Responsive Tabs Bar */}
+          <div className="flex items-center border-b border-slate-200 bg-slate-50/70 -mx-6 -mt-1 px-4 sm:px-6 pt-1.5 overflow-x-auto no-scrollbar scroll-smooth">
+            {TOWING_TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               const hasTabError =
@@ -735,16 +849,19 @@ export function TowingRequestModal({ isOpen, onClose }) {
               return (
                 <button
                   key={tab.id}
+                  data-tab-id={tab.id}
+                  ref={isActive ? activeTabButtonRef : null}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 cursor-pointer transition-colors whitespace-nowrap shrink-0 ${
                     isActive
                       ? 'border-[#0B1E3D] text-[#0B1E3D] bg-white rounded-t-lg shadow-2xs'
                       : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
                   }`}
                 >
                   <Icon className={`w-3.5 h-3.5 ${hasTabError ? 'text-rose-500' : isActive ? 'text-[#0B1E3D]' : 'text-slate-400'}`} />
-                  <span>{tab.label}</span>
+                  <span className="hidden sm:inline">{tab.fullLabel}</span>
+                  <span className="sm:hidden">{tab.shortLabel}</span>
                   {hasTabError && <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />}
                 </button>
               );
@@ -754,34 +871,61 @@ export function TowingRequestModal({ isOpen, onClose }) {
           {/* TAB 1: REQUEST */}
           {activeTab === 'REQUEST' && (
             <div className="space-y-3 pt-1">
+              {/* Smart Document Scan & Auto-Fill */}
+              <DocumentScanDropzone
+                title="Scan RC / Policy / Spot Photo"
+                subtitle="Upload document photo to auto-fill vehicle, customer & breakdown details"
+                allowedPresets={['sample-rc-1', 'sample-towing-spot', 'sample-policy-1']}
+                onScanComplete={handleScanComplete}
+              />
+
+              {scanNotice && (
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs flex items-center justify-between animate-in fade-in">
+                  <span className="font-bold flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                    {scanNotice}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setScanNotice(null)}
+                    className="text-emerald-700 hover:text-emerald-950 p-1 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               {/* Linked Policy Auto-fill */}
               <div className="p-2.5 bg-blue-50/70 rounded-xl border border-blue-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-blue-700 shrink-0" />
                   <div>
-                    <span className="text-[11px] font-bold text-blue-900 block">Link Active Motor Policy</span>
-                    <span className="text-[10px] text-blue-700">Auto-fill customer, vehicle ID & assistance limits</span>
+                    <span className="text-xs font-bold text-blue-900 block">Link Active Motor Policy</span>
+                    <span className="text-[10px] text-blue-700">Auto-populates vehicle, client, and assistance coverage</span>
                   </div>
                 </div>
-                <select
-                  value={formData.policyNumber}
-                  disabled={isLocked}
-                  onChange={(e) => handlePolicySelect(e.target.value)}
-                  className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-blue-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer disabled:bg-slate-100"
-                >
-                  <option value="">Select Motor Policy...</option>
-                  {motorPolicies.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.id} - {p.vehicleNumber} ({p.clientName})
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select
+                    disabled={isLocked}
+                    value={formData.policyNumber}
+                    onChange={(e) => handlePolicySelect(e.target.value)}
+                    className="text-xs font-semibold px-2.5 py-1 bg-white border border-blue-300 rounded-lg text-slate-800 focus:ring-2 focus:ring-blue-500 cursor-pointer disabled:bg-slate-100"
+                  >
+                    <option value="">Select Motor Policy...</option>
+                    {motorPolicies.map((pol) => (
+                      <option key={pol.id} value={pol.id}>
+                        {pol.id} - {pol.vehicleNumber || 'No Reg'} ({pol.clientName})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
+              {/* Customer & Breakdown Core Details */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Customer / Driver Name *
+                    Customer / Insured Name *
                   </label>
                   <div className="relative">
                     <User className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -908,20 +1052,6 @@ export function TowingRequestModal({ isOpen, onClose }) {
                   )}
                 </div>
               </div>
-
-              <div className="flex justify-between items-center pt-2">
-                <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isLocked}>
-                  Save (Draft)
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setActiveTab('DETAILS')}
-                  className="bg-[#1E4E8C] hover:bg-[#0B1E3D] text-xs font-bold"
-                >
-                  Proceed to Towing Details →
-                </Button>
-              </div>
             </div>
           )}
 
@@ -978,81 +1108,74 @@ export function TowingRequestModal({ isOpen, onClose }) {
                     <p className="text-[11px] text-rose-600 mt-0.5 font-semibold">{validationErrors.actualDistanceKm}</p>
                   )}
                 </div>
-              </div>
 
-              {/* Towing Partner & Fleet Details */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <span className="font-bold text-slate-900 block text-xs">Assigned Towing Partner & Driver</span>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Partner Fleet</label>
-                    <select
-                      value={formData.partnerName}
-                      disabled={isLocked}
-                      onChange={(e) => handleChange('partnerName', e.target.value)}
-                      className="w-full px-2 py-1 border border-slate-300 rounded text-xs font-semibold bg-white disabled:bg-slate-100"
-                    >
-                      <option value="TVS Auto Assist 24x7">TVS Auto Assist 24x7</option>
-                      <option value="All India Roadside Assistance">All India Roadside Assistance</option>
-                      <option value="Crossroads India RSA">Crossroads India RSA</option>
-                      <option value="Chennai Heavy Lift Tows">Chennai Heavy Lift Tows</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Tow Truck Reg No</label>
-                    <input
-                      type="text"
-                      disabled={isLocked}
-                      value={formData.towTruckNo}
-                      onChange={(e) => handleChange('towTruckNo', e.target.value)}
-                      className="w-full px-2 py-1 border border-slate-300 rounded text-xs font-mono font-semibold disabled:bg-slate-100"
-                      placeholder="TN 09 TC 4488"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Driver Name</label>
-                    <input
-                      type="text"
-                      disabled={isLocked}
-                      value={formData.driverName}
-                      onChange={(e) => handleChange('driverName', e.target.value)}
-                      className="w-full px-2 py-1 border border-slate-300 rounded text-xs font-semibold disabled:bg-slate-100"
-                      placeholder="S. Velu"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Driver Contact</label>
-                    <input
-                      type="text"
-                      disabled={isLocked}
-                      value={formData.driverPhone}
-                      onChange={(e) => handleChange('driverPhone', e.target.value)}
-                      className="w-full px-2 py-1 border border-slate-300 rounded text-xs font-mono font-semibold disabled:bg-slate-100"
-                      placeholder="+91 94441 66778"
-                    />
-                  </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Estimated Distance (KM)</label>
+                  <input
+                    type="number"
+                    disabled={isLocked}
+                    value={formData.estimatedDistanceKm}
+                    onChange={(e) => handleChange('estimatedDistanceKm', Number(e.target.value))}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono disabled:bg-slate-100"
+                  />
                 </div>
-              </div>
 
-              <div className="flex justify-between items-center pt-2">
-                <Button variant="outline" size="sm" onClick={() => setActiveTab('REQUEST')}>
-                  ← Back to Request
-                </Button>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isLocked}>
-                    Save (Draft)
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setActiveTab('CHARGES')}
-                    className="bg-[#1E4E8C] hover:bg-[#0B1E3D] text-xs font-bold"
-                  >
-                    Proceed to Charges & Rates →
-                  </Button>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Towing RSA Partner</label>
+                  <input
+                    type="text"
+                    disabled={isLocked}
+                    value={formData.partnerName}
+                    onChange={(e) => handleChange('partnerName', e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-semibold disabled:bg-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Partner Emergency Phone</label>
+                  <input
+                    type="text"
+                    disabled={isLocked}
+                    value={formData.partnerPhone}
+                    onChange={(e) => handleChange('partnerPhone', e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono disabled:bg-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tow Truck Reg No</label>
+                  <input
+                    type="text"
+                    disabled={isLocked}
+                    value={formData.towTruckNo}
+                    onChange={(e) => handleChange('towTruckNo', e.target.value.toUpperCase())}
+                    placeholder="TN 02 AA 9812"
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono font-bold uppercase disabled:bg-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Assigned Driver Name</label>
+                  <input
+                    type="text"
+                    disabled={isLocked}
+                    value={formData.driverName}
+                    onChange={(e) => handleChange('driverName', e.target.value)}
+                    placeholder="S. Murugan"
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-semibold disabled:bg-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Driver Phone Number</label>
+                  <input
+                    type="text"
+                    disabled={isLocked}
+                    value={formData.driverPhone}
+                    onChange={(e) => handleChange('driverPhone', e.target.value)}
+                    placeholder="+91 94441 55667"
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono disabled:bg-slate-100"
+                  />
                 </div>
               </div>
             </div>
@@ -1061,351 +1184,433 @@ export function TowingRequestModal({ isOpen, onClose }) {
           {/* TAB 3: CHARGES & RATES */}
           {activeTab === 'CHARGES' && (
             <div className="space-y-3 pt-1 text-xs">
-              {/* Presets Toolbar */}
-              <div className="p-2.5 bg-indigo-50/70 border border-indigo-200 rounded-xl flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-indigo-900 font-bold text-xs">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Quick Bill Presets:</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={isLocked}
-                    onClick={handleLoadShortBillPreset}
-                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-white border border-indigo-300 text-indigo-800 hover:bg-indigo-100 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    📄 Load Short Bill (1-2 Lines • Single Page A4)
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isLocked}
-                    onClick={handleLoadLongBillPreset}
-                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-white border border-indigo-300 text-indigo-800 hover:bg-indigo-100 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    📑 Load Long Bill (12 Lines • Clean Multi-Page)
-                  </button>
-                </div>
-              </div>
-
               {validationErrors.charges && (
                 <div className="p-2 rounded bg-rose-50 border border-rose-300 text-rose-800 font-bold text-xs">
                   ⚠️ {validationErrors.charges}
                 </div>
               )}
 
-              {/* Distance Charges */}
-              <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
+              {/* 1. Base & Distance Rates */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
                     <Truck className="w-3.5 h-3.5 text-blue-600" />
-                    Distance Charges (KM Rate Card)
+                    Distance Rates & Base Package
                   </span>
-                  <span className="font-mono font-bold text-blue-900">
-                    Total Distance Fee: ₹{calc.totalTowingDistance.toFixed(2)}
+                  <span className="text-[11px] text-slate-500 font-mono font-bold">
+                    Total Distance Fee: {formatINR(calc.totalTowingDistance)}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Base Fee (₹)</label>
-                    <input
-                      type="number"
+                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Rate Card</label>
+                    <select
+                      value={formData.rateCard}
                       disabled={isLocked}
-                      value={formData.baseTowingCharge}
-                      onChange={(e) => handleChange('baseTowingCharge', Number(e.target.value))}
-                      className="w-full px-2 py-1 border rounded text-xs font-mono font-bold disabled:bg-slate-100"
-                    />
+                      onChange={(e) => handleChange('rateCard', e.target.value)}
+                      className="w-full px-2 py-1 border rounded text-xs font-semibold text-slate-900 bg-white disabled:bg-slate-100"
+                    >
+                      <option value="Standard">Standard City RSA</option>
+                      <option value="Highway">NH Highway Premium</option>
+                      <option value="Heavy Commercial">Heavy Commercial</option>
+                    </select>
                   </div>
+
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Included KM</label>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Base Fee</label>
+                    <div className="relative">
+                      <IndianRupee className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="number"
+                        min="0"
+                        disabled={isLocked}
+                        value={formData.baseTowingCharge}
+                        onChange={(e) => handleChange('baseTowingCharge', Number(e.target.value))}
+                        className="w-full pl-6 pr-2 py-1 border rounded font-mono font-bold text-slate-900 disabled:bg-slate-100"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Base Included KM</label>
                     <input
                       type="number"
+                      min="0"
                       disabled={isLocked}
                       value={formData.baseIncludedKm}
                       onChange={(e) => handleChange('baseIncludedKm', Number(e.target.value))}
-                      className="w-full px-2 py-1 border rounded text-xs font-mono disabled:bg-slate-100"
+                      className="w-full px-2 py-1 border rounded font-mono text-slate-900 disabled:bg-slate-100"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Actual KM</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      disabled={isLocked}
-                      value={formData.actualDistanceKm}
-                      onChange={(e) => handleChange('actualDistanceKm', Number(e.target.value))}
-                      className="w-full px-2 py-1 border rounded text-xs font-mono font-bold text-blue-700 disabled:bg-slate-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Rate / KM (₹)</label>
-                    <input
-                      type="number"
-                      disabled={isLocked}
-                      value={formData.ratePerKm}
-                      onChange={(e) => handleChange('ratePerKm', Number(e.target.value))}
-                      className="w-full px-2 py-1 border rounded text-xs font-mono font-bold disabled:bg-slate-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Additional KM Fee</label>
-                    <div className="px-2 py-1 bg-slate-100 rounded text-xs font-mono font-bold text-slate-800">
-                      ₹{calc.distanceCharge.toFixed(2)}
+                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Rate / KM</label>
+                    <div className="relative">
+                      <IndianRupee className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="number"
+                        min="0"
+                        disabled={isLocked}
+                        value={formData.ratePerKm}
+                        onChange={(e) => handleChange('ratePerKm', Number(e.target.value))}
+                        className="w-full pl-6 pr-2 py-1 border rounded font-mono font-bold text-slate-900 disabled:bg-slate-100"
+                      />
                     </div>
                   </div>
                 </div>
+
+                <div className="mt-2 text-[10px] text-slate-500 bg-white p-2 rounded border border-slate-200 flex justify-between">
+                  <span>
+                    Additional Distance: <strong>{calc.additionalKm.toFixed(1)} KM</strong> (Actual {formData.actualDistanceKm} KM - Base {formData.baseIncludedKm} KM)
+                  </span>
+                  <span className="font-mono font-bold text-slate-700">
+                    Distance Charge: {formatINR(calc.distanceCharge)}
+                  </span>
+                </div>
               </div>
 
-              {/* Labour & Waiting Charges */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Labour */}
-                <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-                    <span className="font-bold text-slate-900">Labour & Winching</span>
-                    <span className="font-mono font-bold text-emerald-800">₹{calc.labourTotal}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div>
-                      <label className="block font-semibold text-slate-600">Towing Labour (₹)</label>
+              {/* 2. Labour & Recovery */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-emerald-600" />
+                    Labour, Recovery & Winching Breakdown
+                  </span>
+                  <span className="text-[11px] font-mono font-bold text-emerald-800">
+                    Labour Total: {formatINR(calc.labourTotal)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Towing Hookup Labour</label>
+                    <div className="relative">
+                      <IndianRupee className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
                       <input
                         type="number"
+                        min="0"
                         disabled={isLocked}
                         value={formData.labourTowing}
                         onChange={(e) => handleChange('labourTowing', Number(e.target.value))}
-                        className="w-full px-2 py-1 border rounded font-mono disabled:bg-slate-100"
+                        className="w-full pl-6 pr-2 py-1 border rounded font-mono disabled:bg-slate-100"
                       />
                     </div>
-                    <div>
-                      <label className="block font-semibold text-slate-600">Recovery / Winch (₹)</label>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Recovery / Winch Labour</label>
+                    <div className="relative">
+                      <IndianRupee className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
                       <input
                         type="number"
+                        min="0"
                         disabled={isLocked}
                         value={formData.labourRecovery}
                         onChange={(e) => handleChange('labourRecovery', Number(e.target.value))}
-                        className="w-full px-2 py-1 border rounded font-mono disabled:bg-slate-100"
+                        className="w-full pl-6 pr-2 py-1 border rounded font-mono disabled:bg-slate-100"
                       />
                     </div>
-                    <div>
-                      <label className="block font-semibold text-slate-600">Loading / Ramp (₹)</label>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Ramp Loading / Securing</label>
+                    <div className="relative">
+                      <IndianRupee className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
                       <input
                         type="number"
+                        min="0"
                         disabled={isLocked}
                         value={formData.labourLoading}
                         onChange={(e) => handleChange('labourLoading', Number(e.target.value))}
-                        className="w-full px-2 py-1 border rounded font-mono disabled:bg-slate-100"
+                        className="w-full pl-6 pr-2 py-1 border rounded font-mono disabled:bg-slate-100"
                       />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-slate-600">Extra Hours (hrs)</label>
-                      <input
-                        type="number"
-                        disabled={isLocked}
-                        value={formData.labourAdditionalHours}
-                        onChange={(e) => handleChange('labourAdditionalHours', Number(e.target.value))}
-                        className="w-full px-2 py-1 border rounded font-mono disabled:bg-slate-100"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Waiting & Surcharges */}
-                <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-                    <span className="font-bold text-slate-900">Waiting & Toll Surcharges</span>
-                    <span className="font-mono font-bold text-amber-800">₹{calc.waitingCharge + calc.otherChargesTotal}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div>
-                      <label className="block font-semibold text-slate-600">Waiting Time (min)</label>
-                      <input
-                        type="number"
-                        disabled={isLocked}
-                        value={formData.actualWaitingMin}
-                        onChange={(e) => handleChange('actualWaitingMin', Number(e.target.value))}
-                        className="w-full px-2 py-1 border rounded font-mono disabled:bg-slate-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-slate-600">Toll Charges (₹)</label>
-                      <input
-                        type="number"
-                        disabled={isLocked}
-                        value={formData.tollChargeAmount}
-                        onChange={(e) => handleChange('tollChargeAmount', Number(e.target.value))}
-                        className="w-full px-2 py-1 border rounded font-mono disabled:bg-slate-100"
-                      />
-                    </div>
-                    <div className="flex items-center gap-1.5 pt-2">
-                      <input
-                        type="checkbox"
-                        id="nightChargeToggle"
-                        disabled={isLocked}
-                        checked={formData.nightChargeEnabled}
-                        onChange={(e) => handleChange('nightChargeEnabled', e.target.checked)}
-                        className="rounded text-blue-600 cursor-pointer"
-                      />
-                      <label htmlFor="nightChargeToggle" className="font-semibold text-slate-700 cursor-pointer">
-                        Night Fee (+₹200)
-                      </label>
-                    </div>
-                    <div className="flex items-center gap-1.5 pt-2">
-                      <input
-                        type="checkbox"
-                        id="expressChargeToggle"
-                        disabled={isLocked}
-                        checked={formData.expressChargeEnabled}
-                        onChange={(e) => handleChange('expressChargeEnabled', e.target.checked)}
-                        className="rounded text-blue-600 cursor-pointer"
-                      />
-                      <label htmlFor="expressChargeToggle" className="font-semibold text-slate-700 cursor-pointer">
-                        Express SLA (+₹150)
-                      </label>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Assistance Coverage vs Customer Payable */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+              {/* 3. Waiting & Toll Surcharges */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    Waiting Time, Tolls & Surcharges
+                  </span>
+                  <span className="text-[11px] font-mono font-bold text-amber-800">
+                    Surcharges: {formatINR(calc.waitingCharge + calc.otherChargesTotal)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Actual Waiting (Min)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      disabled={isLocked}
+                      value={formData.actualWaitingMin}
+                      onChange={(e) => handleChange('actualWaitingMin', Number(e.target.value))}
+                      className="w-full px-2 py-1 border rounded font-mono disabled:bg-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Toll Charges</label>
+                    <div className="relative">
+                      <IndianRupee className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="number"
+                        min="0"
+                        disabled={isLocked}
+                        value={formData.tollChargeAmount}
+                        onChange={(e) => handleChange('tollChargeAmount', Number(e.target.value))}
+                        className="w-full pl-6 pr-2 py-1 border rounded font-mono disabled:bg-slate-100"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-3">
+                    <input
+                      type="checkbox"
+                      id="nightCharge"
+                      disabled={isLocked}
+                      checked={formData.nightChargeEnabled}
+                      onChange={(e) => handleChange('nightChargeEnabled', e.target.checked)}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="nightCharge" className="text-[11px] font-semibold text-slate-700 cursor-pointer">
+                      Night Fee (+{formatINR(200)})
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-3">
+                    <input
+                      type="checkbox"
+                      id="expressCharge"
+                      disabled={isLocked}
+                      checked={formData.expressChargeEnabled}
+                      onChange={(e) => handleChange('expressChargeEnabled', e.target.checked)}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="expressCharge" className="text-[11px] font-semibold text-slate-700 cursor-pointer">
+                      Express SLA (+{formatINR(150)})
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Real-time Calculation Summary Card */}
+              <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <span className="font-bold text-slate-800 block text-xs">Summary Breakdown</span>
-                  <span className="text-[11px] text-slate-500">
-                    Gross: ₹{calc.grossAmount} + GST (18%): ₹{calc.gstAmount} = ₹{calc.grandTotal}
+                  <span className="text-[10px] uppercase font-bold text-blue-700 block tracking-wider">
+                    Total Estimated Bill
+                  </span>
+                  <span className="text-xs text-slate-600 font-mono">
+                    Gross: {formatINR(calc.grossAmount)} + GST (18%): {formatINR(calc.gstAmount)} = {formatINR(calc.grandTotal)}
                   </span>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] uppercase font-bold text-slate-500 block">Customer Net Payable</span>
-                  <span className="text-sm font-mono font-black text-blue-900">₹{calc.customerPayable.toFixed(2)}</span>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center pt-2">
-                <Button variant="outline" size="sm" onClick={() => setActiveTab('DETAILS')}>
-                  ← Back to Details
-                </Button>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isLocked}>
-                    Save (Draft)
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setActiveTab('DOCS')}
-                    className="bg-[#1E4E8C] hover:bg-[#0B1E3D] text-xs font-bold"
-                  >
-                    Proceed to Documents & Proof →
-                  </Button>
+                  <span className="text-sm font-mono font-black text-blue-900">{formatINR(calc.customerPayable)}</span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 4: DOCUMENTS & PROOF */}
+          {/* TAB 4: DOCS */}
           {activeTab === 'DOCS' && (
             <div className="space-y-3 pt-1 text-xs">
-              <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+              <DocumentScanDropzone
+                title="Scan & Upload Breakdown Proof"
+                subtitle="Upload spot photo, loading proof, or workshop delivery receipt"
+                allowedPresets={['sample-towing-spot', 'sample-rc-1']}
+                onScanComplete={handleScanComplete}
+              />
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center">
                 <div>
-                  <span className="font-bold text-slate-900 block">Job Evidence & Documents Checklist</span>
-                  <span className="text-[11px] text-slate-500">Incident photos, workshop sign-off, and customer receipts</span>
+                  <span className="font-bold text-slate-800 block">Proof of Breakdown & Towing Deliverables</span>
+                  <span className="text-[10px] text-slate-500">Required for insurance cashless reimbursement & audit compliance</span>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   icon={Upload}
                   disabled={isLocked}
-                  onClick={() => alert('Document proof uploaded successfully!')}
-                  className="text-xs font-bold"
+                  onClick={() => alert('Document upload modal activated')}
+                  className="text-xs bg-white"
                 >
-                  + Upload Proof
+                  Upload Proof
                 </Button>
               </div>
 
-              <div className="overflow-x-auto rounded-lg border border-slate-200">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 text-slate-600 font-bold text-[10px] uppercase border-b border-slate-200">
-                      <th className="py-2 px-3">Category</th>
-                      <th className="py-2 px-3">File Name</th>
-                      <th className="py-2 px-3">Status</th>
-                      <th className="py-2 px-3 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {formData.documents.map((doc) => (
-                      <tr key={doc.id} className="hover:bg-slate-50">
-                        <td className="py-2 px-3 font-semibold text-slate-800">{doc.category}</td>
-                        <td className="py-2 px-3 font-mono text-slate-600">{doc.name}</td>
-                        <td className="py-2 px-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            doc.status === 'Uploaded' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                          }`}>
-                            {doc.status}
-                          </span>
-                        </td>
-                        <td className="py-2 px-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => alert(`Previewing ${doc.name}`)}
-                            className="text-blue-700 font-bold hover:underline cursor-pointer"
-                          >
-                            Preview
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {(formData.documents || []).map((doc) => (
+                  <div key={doc.id} className="p-2.5 bg-white rounded-lg border border-slate-200 flex items-center justify-between shadow-2xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText className="w-4 h-4 text-slate-500 shrink-0" />
+                      <div className="min-w-0">
+                        <span className="font-bold text-slate-900 block truncate">{doc.name}</span>
+                        <span className="text-[10px] text-slate-500 block">{doc.category}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        doc.status === 'Uploaded' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {doc.status}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => alert(`Previewing ${doc.name}`)}
+                        className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: PAYMENT DETAILS */}
+          {activeTab === 'PAYMENT' && (
+            <div className="space-y-3 pt-1 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-200">
+                  <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <Receipt className="w-3.5 h-3.5 text-blue-600" />
+                    Payment Information & Settlement Mode
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    (Note: Completing with Payment Status as "Pending" is permitted)
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">Payment Status</label>
+                    <select
+                      value={formData.paymentStatus}
+                      disabled={isLocked}
+                      onChange={(e) => handleChange('paymentStatus', e.target.value)}
+                      className="w-full px-2.5 py-1.5 border rounded-lg text-xs font-bold text-slate-900 bg-white disabled:bg-slate-100"
+                    >
+                      <option value="Pending">Pending / Unpaid</option>
+                      <option value="Paid by Customer">Paid by Customer</option>
+                      <option value="Paid by Insurance">Paid by Insurance</option>
+                      <option value="Partially Paid">Partially Paid</option>
+                      <option value="Waived">Waived</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">Payment Method</label>
+                    <select
+                      value={formData.paymentMethod}
+                      disabled={isLocked}
+                      onChange={(e) => handleChange('paymentMethod', e.target.value)}
+                      className="w-full px-2.5 py-1.5 border rounded-lg text-xs font-semibold text-slate-900 bg-white disabled:bg-slate-100"
+                    >
+                      <option value="UPI">UPI / QR Code</option>
+                      <option value="Card">Debit / Credit Card</option>
+                      <option value="Cash">Cash to Driver</option>
+                      <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">Transaction ID / Reference</label>
+                    <input
+                      type="text"
+                      disabled={isLocked}
+                      value={formData.transactionId}
+                      onChange={(e) => handleChange('transactionId', e.target.value)}
+                      placeholder="e.g. UPI-REF-99881234"
+                      className="w-full px-2.5 py-1.5 border rounded-lg text-xs font-mono disabled:bg-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">Payment Date</label>
+                    <input
+                      type="date"
+                      disabled={isLocked}
+                      value={formData.paymentDate}
+                      onChange={(e) => handleChange('paymentDate', e.target.value)}
+                      className="w-full px-2.5 py-1.5 border rounded-lg text-xs font-mono disabled:bg-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">Job Operational Status</label>
+                    <select
+                      value={formData.jobStatus}
+                      disabled={isLocked}
+                      onChange={(e) => handleChange('jobStatus', e.target.value)}
+                      className="w-full px-2.5 py-1.5 border rounded-lg text-xs font-bold text-slate-900 bg-white disabled:bg-slate-100"
+                    >
+                      <option value="Draft">Draft</option>
+                      <option value="Requested">Requested</option>
+                      <option value="Assigned">Assigned</option>
+                      <option value="Dispatched">Dispatched</option>
+                      <option value="Completed">Completed</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex justify-between items-center pt-2">
-                <Button variant="outline" size="sm" onClick={() => setActiveTab('CHARGES')}>
-                  ← Back to Charges
-                </Button>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isLocked}>
-                    Save (Draft)
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setActiveTab('BILLING')}
-                    className="bg-[#1E4E8C] hover:bg-[#0B1E3D] text-xs font-bold"
-                  >
-                    Proceed to Billing & Invoice →
-                  </Button>
+              {/* Settlement Summary Breakdown */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+                    Insurance Cashless Settlement
+                  </span>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="text-xs text-slate-600">Covered under policy:</span>
+                    <span className="font-mono font-bold text-emerald-900 text-sm">{formatINR(calc.insuranceCovered)}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Directly settled with insurer. Deducted from customer bill.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl">
+                  <span className="text-[10px] font-bold text-blue-800 uppercase tracking-wider block">
+                    Customer Balance Payable
+                  </span>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="text-xs text-slate-600">Net due from customer:</span>
+                    <span className="font-mono font-black text-blue-900 text-base">{formatINR(calc.customerPayable)}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Payable via selected method ({formData.paymentMethod}).
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 5: BILLING & INVOICE */}
+          {/* TAB 6: BILLING & INVOICE */}
           {activeTab === 'BILLING' && (
             <div className="space-y-3 pt-1 text-xs">
               {/* Action Bar for Invoice */}
               <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-100 rounded-xl border border-slate-200">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900 text-xs">Job Status:</span>
-                  <select
-                    value={formData.jobStatus}
-                    disabled={isLocked}
-                    onChange={(e) => handleChange('jobStatus', e.target.value)}
-                    className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-white text-blue-900 focus:ring-2 focus:ring-blue-500 cursor-pointer disabled:bg-slate-100"
-                  >
-                    <option value="Draft">Draft</option>
-                    <option value="Requested">Requested</option>
-                    <option value="Assigned">Assigned</option>
-                    <option value="Dispatched">Dispatched</option>
-                    <option value="Completed">Completed</option>
-                  </select>
+                  <span className="font-bold text-slate-900 text-xs">Official Billing Preview:</span>
+                  <span className="font-mono text-xs font-bold text-blue-900 bg-white px-2 py-0.5 rounded border border-slate-300">
+                    {formData.billNo || 'PROVISIONAL DRAFT'}
+                  </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     icon={Printer}
                     onClick={handlePrint}
-                    className="text-xs font-bold cursor-pointer"
+                    className="text-xs font-bold cursor-pointer bg-white"
                   >
                     Print / PDF
                   </Button>
@@ -1415,29 +1620,9 @@ export function TowingRequestModal({ isOpen, onClose }) {
                     size="sm"
                     icon={Send}
                     onClick={handleSendToCustomer}
-                    className="text-xs font-bold text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer"
+                    className="text-xs font-bold text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer bg-white"
                   >
                     WhatsApp Bill
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSaveDraft}
-                    disabled={isLocked}
-                    className="text-xs font-bold"
-                  >
-                    Save (Draft)
-                  </Button>
-
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleSaveAndComplete}
-                    disabled={isLocked}
-                    className="bg-emerald-700 hover:bg-emerald-800 text-xs font-bold text-white shadow-xs"
-                  >
-                    Save & Complete Job
                   </Button>
                 </div>
               </div>
@@ -1503,7 +1688,7 @@ export function TowingRequestModal({ isOpen, onClose }) {
                         <tr key={item.id}>
                           <td className="py-1 font-semibold text-slate-800">{item.description}</td>
                           <td className="py-1 text-center text-slate-500 font-mono">{item.qty}</td>
-                          <td className="py-1 text-right font-mono font-semibold">₹{item.amount.toFixed(2)}</td>
+                          <td className="py-1 text-right font-mono font-semibold">{formatINR(item.amount)}</td>
                         </tr>
                       ))
                     )}
@@ -1511,101 +1696,26 @@ export function TowingRequestModal({ isOpen, onClose }) {
                   <tfoot className="border-t-2 border-slate-300 font-bold">
                     <tr>
                       <td colSpan={2} className="py-1 text-slate-700">Subtotal (Gross)</td>
-                      <td className="py-1 text-right font-mono">₹{calc.grossAmount.toFixed(2)}</td>
+                      <td className="py-1 text-right font-mono">{formatINR(calc.grossAmount)}</td>
                     </tr>
                     <tr>
                       <td colSpan={2} className="py-1 text-slate-600">GST (18%)</td>
-                      <td className="py-1 text-right font-mono text-slate-700">₹{calc.gstAmount.toFixed(2)}</td>
+                      <td className="py-1 text-right font-mono text-slate-700">{formatINR(calc.gstAmount)}</td>
                     </tr>
                     <tr className="text-sm border-t border-slate-200">
                       <td colSpan={2} className="py-1 text-[#0B1E3D] font-black">Grand Total</td>
-                      <td className="py-1 text-right font-mono font-black text-[#0B1E3D]">₹{calc.grandTotal.toFixed(2)}</td>
+                      <td className="py-1 text-right font-mono font-black text-[#0B1E3D]">{formatINR(calc.grandTotal)}</td>
                     </tr>
                     <tr className="bg-emerald-50 text-emerald-900">
                       <td colSpan={2} className="py-1 px-2">Covered by Insurance RSA Endorsement</td>
-                      <td className="py-1 px-2 text-right font-mono font-bold">- ₹{calc.insuranceCovered.toFixed(2)}</td>
+                      <td className="py-1 px-2 text-right font-mono font-bold">- {formatINR(calc.insuranceCovered)}</td>
                     </tr>
                     <tr className="bg-blue-50 text-blue-900 text-sm">
                       <td colSpan={2} className="py-1.5 px-2 font-black">Net Customer Payable</td>
-                      <td className="py-1.5 px-2 text-right font-mono font-black">₹{calc.customerPayable.toFixed(2)}</td>
+                      <td className="py-1.5 px-2 text-right font-mono font-black">{formatINR(calc.customerPayable)}</td>
                     </tr>
                   </tfoot>
                 </table>
-              </div>
-
-              {/* Payment Details Section */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between pb-1 border-b border-slate-200">
-                  <span className="font-bold text-slate-800 text-xs">Payment Information</span>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    (Note: Completing with Payment Status as "Pending" is allowed)
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Payment Status</label>
-                    <select
-                      value={formData.paymentStatus}
-                      disabled={isLocked}
-                      onChange={(e) => handleChange('paymentStatus', e.target.value)}
-                      className="w-full px-2 py-1 border rounded text-xs font-bold text-slate-900 bg-white disabled:bg-slate-100"
-                    >
-                      <option value="Pending">Pending / Unpaid</option>
-                      <option value="Paid by Customer">Paid by Customer</option>
-                      <option value="Paid by Insurance">Paid by Insurance</option>
-                      <option value="Partially Paid">Partially Paid</option>
-                      <option value="Waived">Waived</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Payment Method</label>
-                    <select
-                      value={formData.paymentMethod}
-                      disabled={isLocked}
-                      onChange={(e) => handleChange('paymentMethod', e.target.value)}
-                      className="w-full px-2 py-1 border rounded text-xs font-semibold text-slate-900 bg-white disabled:bg-slate-100"
-                    >
-                      <option value="UPI">UPI / QR Code</option>
-                      <option value="Card">Debit / Credit Card</option>
-                      <option value="Cash">Cash to Driver</option>
-                      <option value="Bank Transfer">Bank Transfer / NEFT</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Transaction ID / Reference</label>
-                    <input
-                      type="text"
-                      disabled={isLocked}
-                      value={formData.transactionId}
-                      onChange={(e) => handleChange('transactionId', e.target.value)}
-                      placeholder="e.g. UPI-REF-99881234"
-                      className="w-full px-2 py-1 border rounded text-xs font-mono disabled:bg-slate-100"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center pt-2">
-                <Button variant="outline" size="sm" onClick={() => setActiveTab('DOCS')}>
-                  ← Back to Documents
-                </Button>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isLocked}>
-                    Save (Draft)
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleSaveAndComplete}
-                    disabled={isLocked}
-                    className="bg-emerald-700 hover:bg-emerald-800 text-xs font-bold text-white shadow-xs"
-                  >
-                    Save & Complete Job
-                  </Button>
-                </div>
               </div>
             </div>
           )}
@@ -1638,88 +1748,68 @@ export function TowingRequestModal({ isOpen, onClose }) {
                     {formData.billNo || 'PROVISIONAL DRAFT'}
                   </span>
                   <span className="text-[10px] text-slate-600 block">
-                    Date: {formData.requestDateTime || new Date().toLocaleDateString('en-IN')}
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-500 block">
-                    Request ID: {formData.id}
+                    Date: {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* 2. Customer & Vehicle Dossier */}
-            <div className="print-avoid-break mb-3 p-2.5 rounded border border-slate-300 bg-slate-50/50">
-              <div className="grid grid-cols-4 gap-2 text-[10px]">
-                <div>
-                  <span className="text-[9px] text-slate-500 uppercase font-bold block">Customer Name</span>
-                  <span className="font-bold text-slate-900 block">{formData.clientName || 'N/A'}</span>
-                  <span className="text-slate-600 block">{formData.phone}</span>
-                </div>
-
-                <div>
-                  <span className="text-[9px] text-slate-500 uppercase font-bold block">Vehicle Number</span>
-                  <span className="font-mono font-bold text-slate-900 block">{formData.vehicleNumber || 'N/A'}</span>
-                  <span className="text-slate-600 block">{formData.towType}</span>
-                </div>
-
-                <div>
-                  <span className="text-[9px] text-slate-500 uppercase font-bold block">Pickup Location</span>
-                  <span className="font-semibold text-slate-800 block line-clamp-2">{formData.breakdownLocation || 'N/A'}</span>
-                </div>
-
-                <div>
-                  <span className="text-[9px] text-slate-500 uppercase font-bold block">Destination Workshop</span>
-                  <span className="font-semibold text-slate-800 block line-clamp-2">{formData.destinationWorkshop || 'N/A'}</span>
-                </div>
+            {/* 2. Structured Metadata Grid */}
+            <div className="grid grid-cols-4 gap-2 pb-2 mb-2 border-b border-slate-300 text-[10px] print-avoid-break">
+              <div className="p-1.5 bg-slate-50 rounded border border-slate-200">
+                <span className="text-slate-500 uppercase font-bold text-[9px] block">Customer Details</span>
+                <span className="font-bold text-slate-900 block">{formData.clientName || 'N/A'}</span>
+                <span className="text-slate-600 font-mono block">{formData.phone}</span>
+                <span className="text-slate-500 text-[9px] block">Policy: {formData.policyNumber || 'Direct'}</span>
               </div>
 
-              <div className="grid grid-cols-4 gap-2 text-[10px] pt-2 mt-2 border-t border-slate-200">
-                <div>
-                  <span className="text-[9px] text-slate-500 uppercase font-bold block">Towing Distance</span>
-                  <span className="font-mono font-bold text-slate-900 block">{formData.actualDistanceKm} KM</span>
-                </div>
-                <div>
-                  <span className="text-[9px] text-slate-500 uppercase font-bold block">Tow Partner</span>
-                  <span className="font-semibold text-slate-800 block">{formData.partnerName}</span>
-                </div>
-                <div>
-                  <span className="text-[9px] text-slate-500 uppercase font-bold block">Tow Truck Reg</span>
-                  <span className="font-mono font-semibold text-slate-800 block">{formData.towTruckNo || 'TN 09 TC 4488'}</span>
-                </div>
-                <div>
-                  <span className="text-[9px] text-slate-500 uppercase font-bold block">Driver Name</span>
-                  <span className="font-semibold text-slate-800 block">{formData.driverName || 'S. Velu'}</span>
-                </div>
+              <div className="p-1.5 bg-slate-50 rounded border border-slate-200">
+                <span className="text-slate-500 uppercase font-bold text-[9px] block">Vehicle Details</span>
+                <span className="font-mono font-bold text-slate-900 block">{formData.vehicleNumber || 'N/A'}</span>
+                <span className="text-slate-600 block">{formData.towType}</span>
+                <span className="text-slate-500 text-[9px] block">Cond: {formData.vehicleCondition}</span>
+              </div>
+
+              <div className="p-1.5 bg-slate-50 rounded border border-slate-200">
+                <span className="text-slate-500 uppercase font-bold text-[9px] block">Transit Route</span>
+                <span className="font-semibold text-slate-900 block truncate">From: {formData.breakdownLocation || 'Spot'}</span>
+                <span className="font-semibold text-slate-900 block truncate">To: {formData.destinationWorkshop || 'Workshop'}</span>
+                <span className="text-blue-900 font-bold block">{formData.actualDistanceKm} KM Billeted</span>
+              </div>
+
+              <div className="p-1.5 bg-slate-50 rounded border border-slate-200">
+                <span className="text-slate-500 uppercase font-bold text-[9px] block">Assistance Unit</span>
+                <span className="font-bold text-slate-900 block">{formData.partnerName}</span>
+                <span className="text-slate-600 block">Truck: {formData.towTruckNo || 'TN 02 AA 9812'}</span>
+                <span className="text-slate-500 text-[9px] block">Driver: {formData.driverName || 'Velu'} ({formData.driverPhone})</span>
               </div>
             </div>
 
-            {/* 3. Line Items Table */}
-            <div className="mb-3">
-              <table className="w-full text-[10px] border-collapse">
+            {/* 3. Itemized Bill Table */}
+            <div className="mb-2 print-avoid-break">
+              <table className="w-full text-[10px] border border-slate-300">
                 <thead>
-                  <tr className="border-b border-slate-900 text-slate-700 font-bold uppercase text-[9px]">
-                    <th className="py-1.5 text-left w-12">Sr.</th>
-                    <th className="py-1.5 text-left">Description of Towing Service / Charge</th>
-                    <th className="py-1.5 text-center w-28">Basis / Qty</th>
-                    <th className="py-1.5 text-right w-28">Amount (₹)</th>
+                  <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase text-[9px]">
+                    <th className="py-1.5 px-2 text-left w-8">#</th>
+                    <th className="py-1.5 px-2 text-left">Description of Towing Service / Charge Item</th>
+                    <th className="py-1.5 px-2 text-center w-24">Basis / Quantity</th>
+                    <th className="py-1.5 px-2 text-right w-28">Amount (₹)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {calc.lineItems.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-2 text-center text-slate-500 italic">
-                        Standard Towing Dispatch Service (Base Charge Included)
+                      <td colSpan={4} className="py-2 text-center text-slate-400 italic">
+                        No charges entered
                       </td>
                     </tr>
                   ) : (
                     calc.lineItems.map((item, idx) => (
                       <tr key={item.id} className="break-inside-avoid">
-                        <td className="py-1 text-slate-500 font-mono">{idx + 1}.</td>
-                        <td className="py-1 font-semibold text-slate-900">{item.description}</td>
-                        <td className="py-1 text-center font-mono text-slate-600">{item.qty}</td>
-                        <td className="py-1 text-right font-mono font-bold text-slate-900">
-                          ₹{item.amount.toFixed(2)}
-                        </td>
+                        <td className="py-1 px-2 text-slate-500 font-mono">{idx + 1}</td>
+                        <td className="py-1 px-2 font-semibold text-slate-900">{item.description}</td>
+                        <td className="py-1 px-2 text-center text-slate-600 font-mono">{item.qty}</td>
+                        <td className="py-1 px-2 text-right font-mono font-bold">{formatINR(item.amount)}</td>
                       </tr>
                     ))
                   )}
@@ -1727,71 +1817,68 @@ export function TowingRequestModal({ isOpen, onClose }) {
               </table>
             </div>
 
-            {/* 4. Financial Totals & Signatures Block */}
-            <div className="print-avoid-break break-inside-avoid border-t-2 border-slate-900 pt-2 space-y-3">
-              <div className="flex justify-between items-start gap-4">
-                {/* Left: Payment Status & Authorization */}
-                <div className="w-1/2 text-[10px] space-y-1.5">
-                  <div className="p-2 border border-slate-200 rounded bg-slate-50">
-                    <span className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">
-                      Settlement & Payment Details
-                    </span>
-                    <div className="grid grid-cols-2 gap-1 text-[10px]">
-                      <div>
-                        <span className="text-slate-500">Payment Status:</span>{' '}
-                        <strong className="text-slate-900">{formData.paymentStatus}</strong>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">Mode:</span>{' '}
-                        <strong className="text-slate-900">{formData.paymentMethod}</strong>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="text-slate-500">Ref / UTR:</span>{' '}
-                        <span className="font-mono text-slate-900">{formData.transactionId || 'N/A'}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="text-[9px] text-slate-500 leading-tight">
-                    Statutory Notice: Computer generated invoice for roadside emergency assistance rendered under broker facilitation. Subject to Chennai jurisdiction.
-                  </p>
+            {/* 4. Financial Summary Block */}
+            <div className="flex justify-between items-start gap-4 mb-3 print-avoid-break">
+              {/* Payment Status & Instructions */}
+              <div className="flex-1 p-2 bg-slate-50 rounded border border-slate-200 text-[9px] space-y-1">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-200">
+                  <span className="font-bold text-slate-700">Payment Status:</span>
+                  <span className={`px-2 py-0.5 rounded font-black uppercase text-[9px] ${
+                    formData.paymentStatus === 'Paid by Customer' || formData.paymentStatus === 'Paid by Insurance'
+                      ? 'bg-emerald-100 text-emerald-900'
+                      : 'bg-amber-100 text-amber-900'
+                  }`}>
+                    {formData.paymentStatus || 'Pending'}
+                  </span>
                 </div>
-
-                {/* Right: Itemized Summary Totals */}
-                <div className="w-1/2 text-[10px]">
-                  <table className="w-full">
-                    <tbody>
-                      <tr>
-                        <td className="py-0.5 text-slate-600">Subtotal (Gross Towing & Labour):</td>
-                        <td className="py-0.5 text-right font-mono font-semibold">₹{calc.grossAmount.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-0.5 text-slate-600">GST on Assistance (18%):</td>
-                        <td className="py-0.5 text-right font-mono font-semibold">₹{calc.gstAmount.toFixed(2)}</td>
-                      </tr>
-                      <tr className="border-t border-slate-300">
-                        <td className="py-1 font-bold text-slate-900">Grand Total Invoice Value:</td>
-                        <td className="py-1 text-right font-mono font-bold text-slate-900">₹{calc.grandTotal.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-0.5 text-slate-600">Covered by Insurance RSA Limit:</td>
-                        <td className="py-0.5 text-right font-mono font-bold text-emerald-800">- ₹{calc.insuranceCovered.toFixed(2)}</td>
-                      </tr>
-                      <tr className="border-t-2 border-slate-900 bg-slate-100/80">
-                        <td className="py-1.5 px-2 font-black text-slate-900 text-[11px]">NET CUSTOMER PAYABLE:</td>
-                        <td className="py-1.5 px-2 text-right font-mono font-black text-slate-900 text-[12px]">
-                          ₹{calc.customerPayable.toFixed(2)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Mode:</span>
+                  <span className="font-semibold text-slate-900">{formData.paymentMethod}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Transaction Ref:</span>
+                  <span className="font-mono text-slate-900">{formData.transactionId || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Docket Status:</span>
+                  <span className="font-bold text-slate-900">{formData.jobStatus}</span>
                 </div>
               </div>
 
-              {/* 5. Signatures Block */}
-              <div className="print-avoid-break break-inside-avoid pt-6 mt-4 flex justify-between items-end text-[10px]">
+              {/* Totals Table */}
+              <div className="w-64 border border-slate-300 rounded overflow-hidden">
+                <table className="w-full text-[10px]">
+                  <tbody>
+                    <tr className="border-b border-slate-200">
+                      <td className="py-1 px-2 text-slate-600 font-medium">Subtotal (Gross):</td>
+                      <td className="py-1 px-2 text-right font-mono font-semibold">{formatINR(calc.grossAmount)}</td>
+                    </tr>
+                    <tr className="border-b border-slate-200">
+                      <td className="py-1 px-2 text-slate-600 font-medium">GST (18% Output):</td>
+                      <td className="py-1 px-2 text-right font-mono font-semibold">{formatINR(calc.gstAmount)}</td>
+                    </tr>
+                    <tr className="border-b border-slate-300 bg-slate-50 font-bold">
+                      <td className="py-1 px-2 text-slate-900">Grand Total:</td>
+                      <td className="py-1 px-2 text-right font-mono font-bold text-slate-900">{formatINR(calc.grandTotal)}</td>
+                    </tr>
+                    <tr className="border-b border-slate-200 text-emerald-800">
+                      <td className="py-1 px-2 font-medium">Less: Insurance Coverage:</td>
+                      <td className="py-1 px-2 text-right font-mono font-bold">- {formatINR(calc.insuranceCovered)}</td>
+                    </tr>
+                    <tr className="bg-slate-900 text-white font-black text-[11px]">
+                      <td className="py-1.5 px-2">Net Customer Payable:</td>
+                      <td className="py-1.5 px-2 text-right font-mono text-sm">{formatINR(calc.customerPayable)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 5. Declarations & Dual Signatures */}
+            <div className="border-t border-slate-300 pt-3 text-[10px] print-avoid-break">
+              <div className="flex justify-between items-end pt-5">
                 <div className="text-center w-48 border-t border-slate-400 pt-1">
-                  <span className="font-bold text-slate-900 block">Customer Signature</span>
+                  <span className="font-bold text-slate-900 block">{formData.clientName || 'Customer Signature'}</span>
                   <span className="text-[9px] text-slate-500">(Received in good order)</span>
                 </div>
 

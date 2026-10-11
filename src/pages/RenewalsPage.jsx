@@ -20,6 +20,7 @@ import { useAppData } from '../context/AppDataContext';
 import OperationsSubNavBar from '../components/layout/OperationsSubNavBar';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
+import DocumentScanDropzone from '../components/common/DocumentScanDropzone';
 
 export function RenewalsPage() {
   const {
@@ -156,6 +157,29 @@ export function RenewalsPage() {
     });
   };
 
+  const [scanMessage, setScanMessage] = useState(null);
+
+  const handleRenewalScanComplete = (extractedData, res) => {
+    if (!extractedData) return;
+
+    const targetPolicy = renewalRecords.find((r) => {
+      if (extractedData.oldPolicyNo && (r.oldPolicyNo.includes(extractedData.oldPolicyNo) || r.id === extractedData.oldPolicyNo)) return true;
+      if (extractedData.policyNo && (r.oldPolicyNo.includes(extractedData.policyNo) || r.id === extractedData.policyNo)) return true;
+      if (extractedData.vehicleNumber && r.vehicleNumber.replace(/\s+/g, '').toLowerCase() === extractedData.vehicleNumber.replace(/\s+/g, '').toLowerCase()) return true;
+      if (extractedData.customerName && r.policyHolder.toLowerCase().includes(extractedData.customerName.toLowerCase())) return true;
+      return false;
+    }) || renewalRecords[0];
+
+    if (targetPolicy) {
+      setSearchInputValue(targetPolicy.vehicleNumber || targetPolicy.oldPolicyNo);
+      setScanMessage(`✨ Scanned ${res?.documentType || 'Renewal Document'}! Matched: ${targetPolicy.policyHolder} (${targetPolicy.vehicleNumber}) - Opening Renewal Review.`);
+      if (addNotification) {
+        addNotification(`Renewal matched for ${targetPolicy.policyHolder} (${targetPolicy.vehicleNumber})`, 'success');
+      }
+      openRenewModal(targetPolicy);
+    }
+  };
+
   const handleExecuteRenewal = (e) => {
     e.preventDefault();
     if (!selectedPolicyForRenew) return;
@@ -180,6 +204,30 @@ export function RenewalsPage() {
     <div className="space-y-3 pb-8">
       {/* 1. Top Operations Sub-Navigation Bar matching Screenshot 1 */}
       <OperationsSubNavBar activeItem="renewals" />
+
+      {/* Smart Document Scan & Auto-Fill for Renewal */}
+      <DocumentScanDropzone
+        title="Quick Scan Old Policy / RC for Renewal"
+        subtitle="Upload previous year policy document or RC copy to auto-match record and launch renewal review"
+        allowedPresets={['sample-policy-renewal', 'sample-rc-1', 'sample-policy-1']}
+        onScanComplete={handleRenewalScanComplete}
+      />
+
+      {scanMessage && (
+        <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs flex items-center justify-between animate-in fade-in">
+          <span className="font-bold flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            {scanMessage}
+          </span>
+          <button
+            type="button"
+            onClick={() => setScanMessage(null)}
+            className="text-emerald-700 hover:text-emerald-950 p-1 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* 2. Main Search & Action Card */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-4">
@@ -547,6 +595,16 @@ export function RenewalsPage() {
         }
       >
         <form onSubmit={handleExecuteRenewal} className="space-y-3 text-xs">
+          <DocumentScanDropzone
+            title="Scan Renewal Document / Endorsement"
+            subtitle="Upload renewal quote or endorsement to auto-verify dates & partner"
+            allowedPresets={['sample-policy-renewal']}
+            onScanComplete={(data) => {
+              if (data.targetCompanyId) setRenewalForm((prev) => ({ ...prev, targetCompanyId: data.targetCompanyId }));
+              if (data.newExpiryDate) setRenewalForm((prev) => ({ ...prev, newExpiryDate: data.newExpiryDate }));
+            }}
+          />
+
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Select Insurer Partner</label>
             <select

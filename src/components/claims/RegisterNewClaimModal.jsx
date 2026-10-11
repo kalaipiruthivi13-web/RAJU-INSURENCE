@@ -19,6 +19,8 @@ import Button from '../ui/Button';
 import { useAppData } from '../../context/AppDataContext';
 import { claimsService, DYNAMIC_CHECKLIST_CONFIG, normalizeClaimType } from '../../services/claimsService';
 import { storeFileBlob } from '../../services/indexedDbStorage';
+import DocumentScanDropzone from '../common/DocumentScanDropzone';
+import { scanAndExtractDocument } from '../../services/documentScannerService';
 
 export function RegisterNewClaimModal({ isOpen, onClose }) {
   const {
@@ -57,6 +59,56 @@ export function RegisterNewClaimModal({ isOpen, onClose }) {
 
   // Success Confirmation State (Section 3c)
   const [submittedClaim, setSubmittedClaim] = useState(null);
+
+  // Document Auto-Fill States
+  const [autoFilledFields, setAutoFilledFields] = useState([]);
+  const [scanBannerMessage, setScanBannerMessage] = useState(null);
+
+  const handleScanComplete = (extractedData, res) => {
+    if (!extractedData) return;
+    const updated = { ...formData };
+    const filledKeys = [];
+
+    if (extractedData.customerName || extractedData.clientName) {
+      updated.customerName = extractedData.customerName || extractedData.clientName;
+      filledKeys.push('Customer Name');
+    }
+    if (extractedData.mobile || extractedData.phone) {
+      updated.mobile = (extractedData.mobile || extractedData.phone).replace(/[^0-9]/g, '').slice(-10);
+      filledKeys.push('Mobile');
+    }
+    if (extractedData.vehicleNo || extractedData.vehicleNumber) {
+      updated.vehicleNo = extractedData.vehicleNo || extractedData.vehicleNumber;
+      filledKeys.push('Vehicle No');
+    }
+    if (extractedData.policyNo || extractedData.policyNumber) {
+      updated.policyNo = extractedData.policyNo || extractedData.policyNumber;
+      filledKeys.push('Policy No');
+    }
+    if (extractedData.insuranceCompany) {
+      updated.insuranceCompany = extractedData.insuranceCompany;
+      filledKeys.push('Insurance Company');
+    }
+    if (extractedData.incidentDate) {
+      updated.incidentDate = extractedData.incidentDate;
+      filledKeys.push('Incident Date');
+    }
+    if (extractedData.estimatedLoss) {
+      updated.estimatedLoss = String(extractedData.estimatedLoss);
+      filledKeys.push('Estimated Loss');
+    }
+    if (extractedData.claimType) {
+      updated.claimType = extractedData.claimType;
+    }
+
+    setFormData(updated);
+    setAutoFilledFields(filledKeys);
+    setScanBannerMessage(`✨ Scanned ${res?.documentType || 'document'} successfully! Auto-filled: ${filledKeys.join(', ')}.`);
+    setErrors({});
+    if (addNotification) {
+      addNotification(`Document scanned: Auto-filled ${filledKeys.length} fields in Claim form`, 'success');
+    }
+  };
 
   // Reset form when modal closes or opens fresh
   useEffect(() => {
@@ -218,6 +270,17 @@ export function RegisterNewClaimModal({ isOpen, onClose }) {
     setFileErrors(newErrors);
     if (validAdditions.length > 0) {
       setAttachedFiles((prev) => [...prev, ...validAdditions]);
+      // Also auto-extract from the first valid file
+      const primaryFile = validAdditions[0].file;
+      if (primaryFile) {
+        scanAndExtractDocument(primaryFile, { delay: 100 })
+          .then((res) => {
+            if (res.success && res.data) {
+              handleScanComplete(res.data, res);
+            }
+          })
+          .catch(() => {});
+      }
     }
 
     if (fileInputRef.current) {
@@ -472,6 +535,30 @@ export function RegisterNewClaimModal({ isOpen, onClose }) {
       }
     >
       <form onSubmit={handleSubmitClaim} className="space-y-4 text-xs">
+        {/* Smart Document Scan & Auto-Fill */}
+        <DocumentScanDropzone
+          title="Smart Document Scan & Auto-Fill"
+          subtitle="Upload RC Copy, Policy Schedule, or Spot Photo to auto-populate claim particulars"
+          allowedPresets={['sample-rc-1', 'sample-policy-1', 'sample-dl-1']}
+          onScanComplete={handleScanComplete}
+        />
+
+        {scanBannerMessage && (
+          <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs flex items-center justify-between animate-in fade-in">
+            <span className="font-bold flex items-center gap-1.5">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+              {scanBannerMessage}
+            </span>
+            <button
+              type="button"
+              onClick={() => setScanBannerMessage(null)}
+              className="text-emerald-700 hover:text-emerald-950 p-1 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Optional Policy Quick Select */}
         <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
           <label className="block text-[11px] font-bold text-slate-700 mb-1">
