@@ -21,19 +21,19 @@ export function OperationsSubNavBar({ activeItem, onSearchModeChange }) {
     { id: 'search-reg', label: 'Search By Reg No.', icon: Search, action: 'search-reg' },
     { id: 'search-mobile', label: 'Mobile No.', icon: Phone, action: 'search-mobile' },
     { id: 'policies', label: 'Manage Policy', icon: FileText, target: 'policies' },
-    { id: 'payment', label: 'Make Payment', icon: CreditCard, action: 'payment' },
     { id: 'reports', label: 'View Reports', icon: FileSpreadsheet, target: 'reports' },
     { id: 'claims', label: 'View Claims', icon: Calculator, target: 'claims' },
+    { id: 'payment', label: 'Make Payment', icon: CreditCard, action: 'payment' },
     { id: 'notices', label: 'Renewal Notice', icon: Bell, action: 'notices' }
   ];
 
   const handleClick = (item) => {
     if (item.target) {
       setActiveTab(item.target);
+    } else if (item.action === 'payment') {
+      setActiveTab('loans-repayments');
     } else if (item.action && onSearchModeChange) {
       onSearchModeChange(item.action);
-    } else if (item.id === 'payment') {
-      setActiveTab('loans-repayments');
     } else if (item.id === 'notices') {
       setActiveTab('renewals');
     }

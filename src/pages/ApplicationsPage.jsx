@@ -19,7 +19,7 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 
 export function ApplicationsPage() {
-  const { setActiveTab, activeTab } = useAppData();
+  const { applications, setActiveTab, activeTab } = useAppData();
   const [subTab, setSubTab] = useState('NEW'); // 'NEW' | 'DRAFTS' | 'PENDING' | 'COMPLETED'
 
   useEffect(() => {
@@ -30,41 +30,16 @@ export function ApplicationsPage() {
     }
   }, [activeTab]);
 
-  // Mock application records
-  const mockApplications = [
-    {
-      id: 'APP-2024-551',
-      clientName: 'Senthil Nathan K.',
-      productType: 'Motor Comprehensive (Zero Dep)',
-      assetRef: 'TN 07 DJ 2341 (Hyundai Creta)',
-      createdDate: '2024-09-20',
-      status: 'Draft',
-      stepProgress: 'Step 3 of 8 (Coverage Selected)'
-    },
-    {
-      id: 'APP-2024-552',
-      clientName: 'Dr. Aruna Vasanth',
-      productType: 'Health Care Supreme (Family)',
-      assetRef: '4 Insured Members',
-      createdDate: '2024-09-19',
-      status: 'Pending Underwriting Sign-Off',
-      stepProgress: 'Step 7 of 8 (Manager Review)'
-    },
-    {
-      id: 'APP-2024-548',
-      clientName: 'Apex Logistics Pvt Ltd',
-      productType: 'Commercial Goods Vehicle Fleet',
-      assetRef: 'TN 22 DK 8812 (Tata 407)',
-      createdDate: '2024-09-18',
-      status: 'Completed & Bound',
-      stepProgress: 'Policy POL-2024-8891 Issued'
-    }
-  ];
+  const appList = applications || [];
 
-  const filteredApps = mockApplications.filter((app) => {
+  const pendingApps = appList.filter((app) => (app.status || '').toLowerCase().includes('pending'));
+  const draftApps = appList.filter((app) => app.status === 'Draft');
+  const completedApps = appList.filter((app) => (app.status || '').toLowerCase().includes('completed'));
+
+  const filteredApps = appList.filter((app) => {
     if (subTab === 'DRAFTS') return app.status === 'Draft';
-    if (subTab === 'PENDING') return app.status.includes('Pending');
-    if (subTab === 'COMPLETED') return app.status.includes('Completed');
+    if (subTab === 'PENDING') return (app.status || '').toLowerCase().includes('pending');
+    if (subTab === 'COMPLETED') return (app.status || '').toLowerCase().includes('completed');
     return true;
   });
 
@@ -145,9 +120,9 @@ export function ApplicationsPage() {
         {/* Sub-Tabs */}
         <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
           {[
-            { id: 'PENDING', label: 'Pending Approvals (1)' },
-            { id: 'DRAFTS', label: 'Drafts (1)' },
-            { id: 'COMPLETED', label: 'Completed' }
+            { id: 'PENDING', label: `Pending Approvals (${pendingApps.length})` },
+            { id: 'DRAFTS', label: `Drafts (${draftApps.length})` },
+            { id: 'COMPLETED', label: `Completed (${completedApps.length})` }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -165,7 +140,7 @@ export function ApplicationsPage() {
         </div>
       </div>
 
-      {/* Render New Application Form (8-Step Dynamic Wizard) OR Applications Table */}
+      {/* Render New Application Form (7-Step Dynamic Wizard) OR Applications Table */}
       {subTab === 'NEW' ? (
         <InsurancePage />
       ) : (

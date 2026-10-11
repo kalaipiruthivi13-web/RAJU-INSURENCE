@@ -24,3 +24,65 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* ==========================================================================
+   PRINT SPECIFICATION: Dedicated Single-Page / Clean Multi-Page A4 Output
+   ========================================================================== */
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@media print {
+  /* Strip scrolling and overflow from html and body */
+  html,
+  body {
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide root app tree, background layout, and all modal wrappers */
+  #root,
+  .no-print,
+  dialog,
+  nav,
+  aside,
+  header {
+    display: none !important;
+  }
+
+  /* Show ONLY dedicated printable bill attached to document.body */
+  #towing-printable-bill {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+    transform: none !important;
+  }
+
+  /* Avoid bad page cuts on rows, signature blocks, and summary sections */
+  #towing-printable-bill tr,
+  #towing-printable-bill .print-avoid-break,
+  #towing-printable-bill .break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+

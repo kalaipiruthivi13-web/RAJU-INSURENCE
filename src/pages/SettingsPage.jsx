@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   ShieldCheck,
   User,
@@ -67,7 +67,7 @@ export function SettingsPage() {
       title: 'Operations Executive / POSP',
       badge: 'Standard Operations',
       badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-      description: 'Day-to-day front office operations: customer intake, 8-step policy proposals, initial claim registration, and payment collections.',
+      description: 'Day-to-day front office operations: customer intake, 7-step policy proposals, initial claim registration, and premium collections.',
       responsibilities: [
         'Client Application Intake & Proposal Creation',
         'Initial Claim Docket Registration (Intimation)',

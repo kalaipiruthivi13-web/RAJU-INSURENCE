@@ -23,7 +23,8 @@ export function Step7ReviewApproval({
   healthMembers,
   selectedQuote,
   onNext,
-  onPrev
+  onPrev,
+  isSubmitting = false
 }) {
   const [brokerDiscountPct, setBrokerDiscountPct] = useState(0);
   const [approvalDecision, setApprovalDecision] = useState('APPROVED');
@@ -93,7 +94,7 @@ export function Step7ReviewApproval({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Validate client risk profile, evaluate exception flags, and adjust broker margin before triggering payment gateway.
+            Validate client risk profile, evaluate exception flags, and adjust broker margin before submitting application.
           </p>
         </div>
 
@@ -262,7 +263,7 @@ export function Step7ReviewApproval({
                   onChange={(e) => setApprovalDecision(e.target.value)}
                   className="w-full px-3 py-2 border rounded-xl bg-white font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="APPROVED">Approved for Binding & Payment</option>
+                  <option value="APPROVED">Approved for Issuance Submission</option>
                   <option value="APPROVED_WITH_TERMS">Approved with Endorsements</option>
                   <option value="COUNTER_OFFER">Counter-Offer Revised Premium</option>
                 </select>
@@ -284,11 +285,19 @@ export function Step7ReviewApproval({
 
       {/* Navigation Footer */}
       <div className="flex items-center justify-between pt-2">
-        <Button variant="outline" size="lg" icon={ArrowLeft} onClick={onPrev}>
+        <Button variant="outline" size="lg" icon={ArrowLeft} onClick={onPrev} disabled={isSubmitting}>
           Back to Document Upload
         </Button>
-        <Button variant="primary" size="lg" icon={ArrowRight} iconPosition="right" onClick={handleProceed}>
-          Approve & Proceed to Step 8: Payment & Issuance
+        <Button
+          variant="primary"
+          size="lg"
+          icon={isSubmitting ? null : CheckCircle2}
+          iconPosition="right"
+          onClick={handleProceed}
+          disabled={isSubmitting}
+          className="bg-[#2563EB] hover:bg-blue-700 text-white font-bold"
+        >
+          {isSubmitting ? 'Submitting Application...' : 'Submit Application'}
         </Button>
       </div>
     </div>

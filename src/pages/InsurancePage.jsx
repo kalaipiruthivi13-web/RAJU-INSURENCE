@@ -10,7 +10,7 @@ import Step4PartnerEligibility from '../components/insurance/Step4PartnerEligibi
 import Step5QuoteComparison from '../components/insurance/Step5QuoteComparison';
 import Step6DocumentsUpload from '../components/insurance/Step6DocumentsUpload';
 import Step7ReviewApproval from '../components/insurance/Step7ReviewApproval';
-import Step8PaymentIssuance from '../components/insurance/Step8PaymentIssuance';
+import Modal from '../components/ui/Modal';
 import {
   User,
   Car,
@@ -19,8 +19,8 @@ import {
   Sliders,
   FolderArchive,
   FileCheck2,
-  CreditCard,
   Check,
+  CheckCircle2,
   ArrowRight,
   ArrowLeft,
   RefreshCw,
@@ -31,7 +31,7 @@ import {
 import Button from '../components/ui/Button';
 
 export function InsurancePage() {
-  const { partners, addPolicy, setActiveTab, activeTab } = useAppData();
+  const { partners, addPolicy, addApplication, setActiveTab, activeTab } = useAppData();
 
   // Funnel Navigation State:
   // 'CATEGORY' -> 'MOTOR_PRODUCT' -> 'MOTOR_INTENT' -> 'RENEWAL_LOOKUP' -> 'WIZARD'
@@ -52,6 +52,15 @@ export function InsurancePage() {
   const [healthScheme, setHealthScheme] = useState('INDIVIDUAL'); // 'INDIVIDUAL' | 'FAMILY' | 'SENIOR_CITIZEN'
 
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedApp, setSubmittedApp] = useState(null);
+
+  // Clamping guard: ensure any draft steps > 7 clamp safely to Step 7
+  useEffect(() => {
+    if (currentStep > 7) {
+      setCurrentStep(7);
+    }
+  }, [currentStep]);
 
   // Sync with activeTab when user clicks sub-menu items
   useEffect(() => {
@@ -234,26 +243,21 @@ export function InsurancePage() {
   // Dynamic Step Labels based on flow
   let step2Label = '02 New Vehicle Details';
   let step5Label = '05 Quotations';
-  let step8Label = '08 Payment & Issue';
 
   if (insuranceCategory === 'MOTOR') {
     if (motorProduct === 'TWO_WHEELER') {
       step2Label = '02 Two Wheeler Details';
       step5Label = motorIntent === 'RENEWAL' ? '05 Renewal Quotations' : '05 Quotations';
-      step8Label = motorIntent === 'RENEWAL' ? '08 Payment & Renewal' : '08 Payment & Issue';
     } else if (motorIntent === 'RENEWAL') {
       step2Label = '02 Existing Vehicle / Policy';
       step5Label = '05 Renewal Quotations';
-      step8Label = '08 Payment & Renewal';
     } else {
       step2Label = '02 New Vehicle Details';
       step5Label = '05 Quotations';
-      step8Label = '08 Payment & Issue';
     }
   } else {
     step2Label = '02 Insured Family Members';
     step5Label = '05 Quotations';
-    step8Label = '08 Payment & Issue';
   }
 
   const steps = [
@@ -263,8 +267,7 @@ export function InsurancePage() {
     { number: 4, label: '04 Partner Eligibility', icon: Building2 },
     { number: 5, label: step5Label, icon: Sliders },
     { number: 6, label: '06 Documents', icon: FolderArchive },
-    { number: 7, label: '07 Review', icon: FileCheck2 },
-    { number: 8, label: step8Label, icon: CreditCard }
+    { number: 7, label: '07 Review', icon: FileCheck2 }
   ];
 
   const handleSelectQuote = (quote) => {
@@ -272,33 +275,54 @@ export function InsurancePage() {
     setCurrentStep(6);
   };
 
-  const handleReviewApproval = (data) => {
-    setReviewData(data);
-    setCurrentStep(8);
-  };
+  const handleFinalSubmitApplication = (reviewApprovalData) => {
+    setIsSubmitting(true);
+    setReviewData(reviewApprovalData);
 
-  const handleConfirmPolicy = ({ policyNo, expiryStr, payableAmount }) => {
     const isNew = motorIntent === 'NEW';
-    addPolicy({
-      id: policyNo,
+    const productType =
+      insuranceCategory === 'MOTOR'
+        ? `${motorProduct === 'CAR' ? 'Car' : 'Two Wheeler'} Insurance (${isNew ? 'New Vehicle' : 'Renewal'})`
+        : 'Health Care Supreme (Family Floater)';
+
+    const assetRef =
+      insuranceCategory === 'MOTOR'
+        ? (motorData.regNo || `${motorData.make} ${motorData.model}`)
+        : `${healthMembers.length} Insured Members`;
+
+    const payablePremium = reviewApprovalData?.adjustedFinalPremium || (selectedQuote ? selectedQuote.finalPremium : 18486);
+
+    const newApp = addApplication({
       clientName: customerData.legalName,
       phone: customerData.mobile,
       email: customerData.email,
-      policyType:
-        insuranceCategory === 'MOTOR'
-          ? `${motorProduct === 'CAR' ? 'Car' : 'Two Wheeler'} Insurance (${isNew ? 'New Vehicle' : 'Renewal'})`
-          : 'Health Care Supreme (Family Floater)',
-      vehicleNumber: insuranceCategory === 'MOTOR' ? (motorData.regNo || 'New Vehicle') : 'Health Insurance',
-      companyId: selectedQuote?.company?.id || 'hdfc_ergo',
-      companyName: selectedQuote?.company?.name || 'HDFC ERGO',
-      premium: payableAmount,
-      sumInsured:
-        insuranceCategory === 'MOTOR'
-          ? Number(motorData.calculatedIdv)
-          : Number(healthCoverage.sumInsured),
-      expiryDate: expiryStr,
-      notes: `Issued via RAJU VENDOR Application Engine. IRDA Authorized.`
+      productType,
+      assetRef,
+      category: insuranceCategory,
+      payablePremium,
+      selectedCompany: selectedQuote?.company?.name || 'HDFC ERGO',
+      selectedCompanyId: selectedQuote?.company?.id || 'hdfc_ergo',
+      sumInsured: insuranceCategory === 'MOTOR' ? Number(motorData.calculatedIdv) : Number(healthCoverage.sumInsured),
+      underwriterNotes: reviewApprovalData?.underwriterNotes || '',
+      approvalDecision: reviewApprovalData?.approvalDecision || 'APPROVED',
+      brokerDiscountAmt: reviewApprovalData?.brokerDiscountAmt || 0,
+      brokerDiscountPct: reviewApprovalData?.brokerDiscountPct || 0,
+      customerData,
+      motorData: insuranceCategory === 'MOTOR' ? motorData : null,
+      healthMembers: insuranceCategory === 'HEALTH' ? healthMembers : null,
+      documents
     });
+
+    setSubmittedApp(newApp);
+    setIsSubmitting(false);
+  };
+
+  const handleResetForm = () => {
+    setSubmittedApp(null);
+    setCurrentStep(1);
+    setSelectedQuote(null);
+    setReviewData(null);
+    setFunnelStep('CATEGORY');
   };
 
   // ==========================================
@@ -1064,7 +1088,7 @@ export function InsurancePage() {
   }
 
   // ==========================================
-  // 8-STEP DYNAMIC INSURANCE WIZARD
+  // 7-STEP DYNAMIC INSURANCE WIZARD
   // ==========================================
   return (
     <div className="space-y-4">
@@ -1092,7 +1116,7 @@ export function InsurancePage() {
             <p className="text-xs text-slate-500 mt-0.5">
               {insuranceCategory === 'HEALTH'
                 ? 'Individual, Family Floater & Senior Citizen Mediclaim underwriting and comparison.'
-                : 'Complete the 8-step application to generate quotes and bind policy.'}
+                : 'Complete the 7-step application to generate quotes and submit for underwriting.'}
             </p>
           </div>
 
@@ -1105,7 +1129,7 @@ export function InsurancePage() {
               ← Change Product
             </button>
             <span className="text-xs font-bold px-2.5 py-1 bg-blue-50 text-[#2563EB] rounded-full border border-blue-200">
-              Step {currentStep} of 8: {steps[currentStep - 1].label}
+              Step {currentStep} of 7: {steps[currentStep - 1]?.label}
             </span>
           </div>
         </div>
@@ -1114,13 +1138,13 @@ export function InsurancePage() {
         <div className="relative">
           <div className="overflow-hidden h-1.5 mb-3 text-xs flex rounded-full bg-slate-100">
             <div
-              style={{ width: `${((currentStep - 1) / 7) * 100}%` }}
+              style={{ width: `${Math.min(100, Math.round(((currentStep - 1) / 6) * 100))}%` }}
               className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-[#2563EB] transition-all duration-300 rounded-full"
             />
           </div>
 
           {/* Stepper Icon Nodes */}
-          <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 text-center">
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 text-center">
             {steps.map((step) => {
               const isDone = currentStep > step.number;
               const isCurrent = currentStep === step.number;
@@ -1278,23 +1302,88 @@ export function InsurancePage() {
           healthCoverage={healthCoverage}
           healthMembers={healthMembers}
           selectedQuote={selectedQuote}
-          onNext={handleReviewApproval}
+          onNext={handleFinalSubmitApplication}
           onPrev={() => setCurrentStep(6)}
+          isSubmitting={isSubmitting}
         />
       )}
 
-      {currentStep === 8 && (
-        <Step8PaymentIssuance
-          customerData={customerData}
-          insuranceCategory={insuranceCategory}
-          motorData={motorData}
-          healthCoverage={healthCoverage}
-          healthMembers={healthMembers}
-          selectedQuote={selectedQuote}
-          reviewData={reviewData}
-          onConfirmPolicy={handleConfirmPolicy}
-          onPrev={() => setCurrentStep(7)}
-        />
+      {/* Application Submission Success Modal */}
+      {submittedApp && (
+        <Modal
+          isOpen={!!submittedApp}
+          onClose={() => setSubmittedApp(null)}
+          title="Application Submitted Successfully"
+          subtitle={`Docket Ref: ${submittedApp.id} • Underwriting Queue`}
+          footer={
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetForm}
+              >
+                + New Application
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setSubmittedApp(null);
+                  setActiveTab('applications');
+                }}
+                className="bg-[#2563EB] text-white"
+              >
+                View Applications Queue →
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-emerald-950 text-sm">
+                  Application Logged with Status: <span className="underline decoration-emerald-500">Pending Issuance</span>
+                </p>
+                <p className="text-emerald-700 mt-1 leading-relaxed">
+                  Your application dossier has been submitted and queued for underwriting sign-off.
+                  No payment has been processed and no policy number has been issued. Downstream policy issuance is handled via Policy Operations.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <div>
+                <span className="text-slate-400 block text-[11px]">Application ID</span>
+                <span className="font-mono font-bold text-[#2563EB] text-sm">{submittedApp.id}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Status</span>
+                <span className="inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[11px] border border-amber-200">
+                  {submittedApp.status}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Proposer Name</span>
+                <span className="font-bold text-slate-900">{submittedApp.clientName}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Product Line</span>
+                <span className="font-semibold text-slate-800">{submittedApp.productType}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Payable Premium</span>
+                <span className="font-mono font-bold text-slate-900">
+                  ₹{(submittedApp.payablePremium || 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Underwriting Decision</span>
+                <span className="font-semibold text-emerald-700">{submittedApp.approvalDecision || 'APPROVED'}</span>
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

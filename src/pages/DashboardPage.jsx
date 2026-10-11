@@ -170,7 +170,7 @@ export function DashboardPage() {
               <p className="text-xs font-bold text-slate-900 group-hover:text-blue-700 truncate">
                 New Application
               </p>
-              <p className="text-[10px] text-slate-500 truncate">8-Step Policy Proposal</p>
+              <p className="text-[10px] text-slate-500 truncate">7-Step Policy Proposal</p>
             </div>
           </button>
 

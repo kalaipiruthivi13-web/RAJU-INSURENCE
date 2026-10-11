@@ -7,6 +7,7 @@ import {
   INITIAL_LEAVES
 } from '../data/mockData';
 import { INSURANCE_PARTNERS, MOCK_REPOSITORY_DOCS, MOCK_PRODUCTS } from '../data/mockInsurancePartners';
+import { claimsService } from '../services/claimsService';
 
 const AppDataContext = createContext(null);
 
@@ -170,6 +171,51 @@ export const INITIAL_TOWING_JOBS = [
   }
 ];
 
+export const INITIAL_APPLICATIONS = [
+  {
+    id: 'APP-2024-551',
+    clientName: 'Senthil Nathan K.',
+    phone: '+91 98410 77654',
+    email: 'senthil.nathan@gmail.com',
+    productType: 'Motor Comprehensive (Zero Dep)',
+    assetRef: 'TN 07 DJ 2341 (Hyundai Creta)',
+    createdDate: '2024-09-20',
+    status: 'Draft',
+    stepProgress: 'Step 3 of 7 (Coverage Selected)',
+    payablePremium: 18486,
+    paymentStatus: 'Pending',
+    paymentMethod: 'N/A'
+  },
+  {
+    id: 'APP-2024-552',
+    clientName: 'Dr. Aruna Vasanth',
+    phone: '+91 94441 55210',
+    email: 'aruna.vasanth@apollo.org',
+    productType: 'Health Care Supreme (Family)',
+    assetRef: '4 Insured Members',
+    createdDate: '2024-09-19',
+    status: 'Pending Issuance',
+    stepProgress: 'Step 7 of 7 (Review Completed)',
+    payablePremium: 28650,
+    paymentStatus: 'Pending',
+    paymentMethod: 'N/A'
+  },
+  {
+    id: 'APP-2024-548',
+    clientName: 'Apex Logistics Pvt Ltd',
+    phone: '+91 99620 11456',
+    email: 'operations@apexlogistics.in',
+    productType: 'Commercial Goods Vehicle Fleet',
+    assetRef: 'TN 22 DK 8812 (Tata 407)',
+    createdDate: '2024-09-18',
+    status: 'Completed & Bound',
+    stepProgress: 'Policy POL-2024-8891 Issued',
+    payablePremium: 42500,
+    paymentStatus: 'Paid',
+    paymentMethod: 'NetBanking'
+  }
+];
+
 export const USERS = {
   ADMIN: {
     id: 'USR-ADMIN-01',
@@ -217,18 +263,22 @@ export function AppDataProvider({ children }) {
     return saved ? JSON.parse(saved) : INITIAL_POLICIES;
   });
 
-  const [claims, setClaims] = useState(() => {
-    const saved = localStorage.getItem('raju_claims_v4');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= 40) return parsed;
-      } catch (e) {
-        // Fall back to INITIAL_CLAIMS
-      }
-    }
-    return INITIAL_CLAIMS;
+  const [applications, setApplications] = useState(() => {
+    const saved = localStorage.getItem('raju_applications');
+    return saved ? JSON.parse(saved) : INITIAL_APPLICATIONS;
   });
+
+  useEffect(() => {
+    localStorage.setItem('raju_applications', JSON.stringify(applications));
+  }, [applications]);
+
+  const [claims, setClaims] = useState(() => {
+    return claimsService.getClaims();
+  });
+
+  useEffect(() => {
+    claimsService.saveClaims(claims);
+  }, [claims]);
 
   const [selectedClaimId, setSelectedClaimId] = useState('CLM-2024-105');
   const [showRegisterClaimModal, setShowRegisterClaimModal] = useState(false);
@@ -388,205 +438,128 @@ export function AppDataProvider({ children }) {
     };
     setPolicies((prev) => [fullPolicy, ...prev]);
     addNotification(`Policy ${id} issued for ${newPolicy.clientName}`, 'success');
-    addAuditLog(`Policy ${id} issued via 8-Step Dynamic Wizard`, newPolicy.clientName);
+    addAuditLog(`Policy ${id} issued via Policy Application Engine`, newPolicy.clientName);
     return fullPolicy;
   };
 
-  // 2. 4-Stage Claims Pipeline Actions
-  const addClaim = (claimData) => {
-    const id = `CLM-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
-    
-    // Auto-calculate settlement due date (+7 days)
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 7);
-    const calculatedDueDate = claimData.settlementDueDate || dueDate.toISOString().split('T')[0];
-
-    const newClaim = {
+  // 1b. Application Actions
+  const addApplication = (appData) => {
+    const year = new Date().getFullYear();
+    const id = appData.id || `APP-${year}-${Math.floor(100 + Math.random() * 900)}`;
+    const newApp = {
       id,
-      currentStage: 1, // 1: Registered, 2: Documents & Insurer Submission, 3: Survey / Review, 4: Settlement / Rejection
-      settlementDueDate: calculatedDueDate,
-      settlementStatus: 'Due in 7 days',
-      attachments: claimData.attachments || [],
-      ...claimData,
-      stageDetails: {
-        stage1: {
-          completed: true,
-          date: new Date().toISOString().split('T')[0],
-          status: 'Claim Registered in Broker System'
-        },
-        stage2: {
-          completed: (claimData.attachments && claimData.attachments.length > 0) ? true : false,
-          date: (claimData.attachments && claimData.attachments.length > 0) ? new Date().toISOString().split('T')[0] : '',
-          docs: claimData.attachments?.map((a) => a.name) || ['RC Copy', 'Spot Photos', 'Damage Estimate'],
-          insurerRefNo: `IR-${Math.floor(10000 + Math.random() * 90000)}`,
-          portalSubmissionStatus: (claimData.attachments && claimData.attachments.length > 0) ? 'Submitted to Carrier Portal' : 'Draft'
-        },
-        stage3: {
-          completed: false,
-          surveyorName: '',
-          surveyorPhone: '',
-          inspectionDate: '',
-          notes: ''
-        },
-        stage4: {
-          completed: false,
-          status: 'Pending',
-          settledAmount: 0,
-          bankRefNo: '',
-          rejectionReason: ''
-        }
-      }
+      clientName: appData.clientName || 'Unnamed Proposer',
+      phone: appData.phone || 'N/A',
+      email: appData.email || 'N/A',
+      productType: appData.productType || 'Comprehensive Insurance',
+      assetRef: appData.assetRef || 'N/A',
+      createdDate: new Date().toISOString().split('T')[0],
+      status: 'Pending Issuance',
+      stepProgress: 'Step 7 of 7 (Review Completed)',
+      payablePremium: appData.payablePremium || 0,
+      paymentStatus: 'Pending',
+      paymentMethod: 'N/A',
+      underwriterNotes: appData.underwriterNotes || '',
+      approvalDecision: appData.approvalDecision || 'APPROVED',
+      ...appData
     };
+    setApplications((prev) => [newApp, ...prev]);
+    addNotification(`Application ${id} submitted with status Pending Issuance`, 'success');
+    addAuditLog(`Application ${id} submitted for underwriting`, newApp.clientName);
+    return newApp;
+  };
 
-    // If documents were uploaded right away, we can advance or keep at 1/2
-    if (claimData.attachments && claimData.attachments.length >= 2) {
-      newClaim.currentStage = 2;
-    }
-
-    setClaims((prev) => [newClaim, ...prev]);
-    setSelectedClaimId(id);
-    addNotification(`New Claim ${id} initiated for ${claimData.clientName} with ${claimData.attachments?.length || 0} attachment(s)`, 'info');
-    addAuditLog(`Claim ${id} registered with attachments`, claimData.clientName);
+  // 2. 4-Stage Claims Pipeline Actions via claimsService
+  const addClaim = (claimData) => {
+    const newClaim = claimsService.createClaim(claimData);
+    setClaims(claimsService.getClaims());
+    setSelectedClaimId(newClaim.id);
+    addNotification(`New Claim ${newClaim.id} initiated for ${newClaim.clientName}`, 'info');
+    addAuditLog(`Claim ${newClaim.id} registered`, newClaim.clientName);
     return newClaim;
   };
 
-  const updateClaimStage = (claimId, targetStage, stageData) => {
-    setClaims((prev) =>
-      prev.map((c) => {
-        if (c.id !== claimId) return c;
-        const updatedDetails = { ...c.stageDetails };
-
-        if (targetStage === 2) {
-          updatedDetails.stage2 = {
-            completed: true,
-            date: new Date().toISOString().split('T')[0],
-            docs: stageData.docs || ['RC Copy', 'Spot Photos', 'Estimate'],
-            insurerRefNo: stageData.insurerRefNo || `REF-${Math.floor(10000 + Math.random() * 90000)}`,
-            portalSubmissionStatus: 'Submitted to Carrier Portal'
-          };
-        } else if (targetStage === 3) {
-          updatedDetails.stage3 = {
-            completed: true,
-            surveyorName: stageData.surveyorName || 'Assigned Surveyor',
-            surveyorPhone: stageData.surveyorPhone || '+91 98400 00000',
-            inspectionDate: stageData.inspectionDate || new Date().toISOString().split('T')[0],
-            notes: stageData.notes || 'Inspection completed. Loss assessed.'
-          };
-        } else if (targetStage === 4) {
-          updatedDetails.stage4 = {
-            completed: true,
-            status: stageData.status || 'Settled',
-            settledAmount: Number(stageData.settledAmount) || c.claimAmountRequested,
-            bankRefNo: stageData.bankRefNo || `NEFT-${Math.floor(10000000 + Math.random() * 90000000)}`,
-            settlementDate: new Date().toISOString().split('T')[0],
-            rejectionReason: stageData.rejectionReason || ''
-          };
-        }
-
-        return {
-          ...c,
-          currentStage: targetStage,
-          stageDetails: updatedDetails
-        };
-      })
-    );
+  const updateClaimStage = (claimId, targetStage, stageData = {}) => {
+    const updated = claimsService.updateStage(claimId, targetStage, stageData);
+    setClaims(claimsService.getClaims());
     addNotification(`Claim ${claimId} advanced to Stage ${targetStage}`, 'success');
     addAuditLog(`Claim ${claimId} advanced to Stage ${targetStage}`, `Stage ${targetStage}`);
+    return updated;
   };
 
   // Claims Extended Actions (Documents, Bills, Follow-ups, Settlement)
   const updateClaimDocument = (claimId, docId, updates) => {
-    setClaims((prev) =>
-      prev.map((c) => {
-        if (c.id !== claimId) return c;
-        const currentDocs = c.checklistDocuments || [];
-        const exists = currentDocs.some((d) => d.id === docId);
-        let updatedDocs;
-        if (exists) {
-          updatedDocs = currentDocs.map((d) => (d.id === docId ? { ...d, ...updates } : d));
-        } else {
-          updatedDocs = [...currentDocs, { id: docId, ...updates }];
-        }
-        return { ...c, checklistDocuments: updatedDocs };
-      })
-    );
+    claimsService.updateDocument(claimId, docId, updates);
+    setClaims(claimsService.getClaims());
     addNotification(`Claim document updated`, 'info');
   };
 
   const addClaimBill = (claimId, bill) => {
-    setClaims((prev) =>
-      prev.map((c) => {
-        if (c.id !== claimId) return c;
-        const existingBills = c.bills || [];
-        const newBill = {
-          id: `BILL-${Date.now()}`,
-          uploadedDate: new Date().toLocaleDateString('en-GB'),
-          uploadedBy: currentUser?.name || 'Staff Executive',
-          status: 'Under Review',
-          ...bill
-        };
-        return { ...c, bills: [newBill, ...existingBills] };
-      })
-    );
-    addNotification(`Bill of ₹${bill.amount?.toLocaleString('en-IN') || 0} recorded for Claim ${claimId}`, 'success');
+    const newBill = claimsService.addBill(claimId, bill);
+    setClaims(claimsService.getClaims());
+    addNotification(`Bill recorded for Claim ${claimId}`, 'success');
+    return newBill;
+  };
+
+  const deleteClaimBill = (claimId, billId) => {
+    claimsService.deleteBill(claimId, billId);
+    setClaims(claimsService.getClaims());
+    addNotification(`Bill removed from Claim ${claimId}`, 'info');
   };
 
   const addClaimFollowUp = (claimId, followUp) => {
-    setClaims((prev) =>
-      prev.map((c) => {
-        if (c.id !== claimId) return c;
-        const existingFollowUps = c.followUps || [];
-        const newFollowUp = {
-          id: `FLP-${Date.now()}`,
-          followUpDate: new Date().toLocaleDateString('en-GB'),
-          assignedEmployee: currentUser?.name || 'K. Priya (Operations)',
-          status: 'Completed',
-          ...followUp
-        };
-        return {
-          ...c,
-          nextFollowUpDate: followUp.nextFollowUpDate || c.nextFollowUpDate,
-          followUps: [newFollowUp, ...existingFollowUps]
-        };
-      })
-    );
+    const newFollowUp = claimsService.addFollowUp(claimId, followUp);
+    setClaims(claimsService.getClaims());
     addNotification(`Follow-up activity logged for Claim ${claimId}`, 'info');
+    return newFollowUp;
   };
 
   const updateClaimSettlement = (claimId, settlementUpdates) => {
-    setClaims((prev) =>
-      prev.map((c) => {
-        if (c.id !== claimId) return c;
-        return {
-          ...c,
-          ...settlementUpdates,
-          settlementStatus: settlementUpdates.settlementStatus || c.settlementStatus,
-          approvedAmount: settlementUpdates.approvedAmount !== undefined ? settlementUpdates.approvedAmount : c.approvedAmount,
-          bankRefNo: settlementUpdates.bankRefNo || c.bankRefNo
-        };
-      })
-    );
+    claimsService.updateSettlement(claimId, settlementUpdates);
+    setClaims(claimsService.getClaims());
     addNotification(`Settlement parameters updated for Claim ${claimId}`, 'success');
   };
 
   // Towing / Roadside Assistance Actions
   const addTowingJob = (jobData) => {
+    const year = new Date().getFullYear();
+    const id = jobData.id || `TOW-${year}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const isCompleted = jobData.jobStatus === 'Completed';
+    // Generate bill number ONCE only when job is completed
+    const billNo = jobData.billNo || (isCompleted ? `TOW-BILL-${year}-${Math.floor(10000 + Math.random() * 90000)}` : '');
+
     const newJob = {
       ...jobData,
-      id: jobData.id || `TOW-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`,
-      billNo: jobData.billNo || `TOW-BILL-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`
+      id,
+      billNo,
+      jobStatus: jobData.jobStatus || 'Draft',
+      paymentStatus: jobData.paymentStatus || 'Pending'
     };
     setTowingJobs((prev) => [newJob, ...prev]);
-    addNotification(`Towing Job Dispatched: ${newJob.id} (${newJob.vehicleNumber})`, 'success');
-    addAuditLog(`Emergency Towing Dispatched (${newJob.id})`, newJob.vehicleNumber);
+    const label = newJob.jobStatus === 'Draft' ? 'Draft Saved' : 'Job Dispatched';
+    addNotification(`Towing ${label}: ${newJob.id} (${newJob.vehicleNumber || newJob.clientName || 'Draft'})`, 'success');
+    addAuditLog(`Towing ${label} (${newJob.id})`, newJob.vehicleNumber || newJob.clientName);
     return newJob;
   };
 
   const updateTowingJob = (jobId, updates) => {
+    let generatedBillNo = null;
     setTowingJobs((prev) =>
-      prev.map((j) => (j.id === jobId ? { ...j, ...updates } : j))
+      prev.map((j) => {
+        if (j.id !== jobId) return j;
+        // Keep existing billNo; only generate if completing and billNo is empty
+        let finalBillNo = j.billNo || updates.billNo || '';
+        if (updates.jobStatus === 'Completed' && !finalBillNo) {
+          const year = new Date().getFullYear();
+          finalBillNo = `TOW-BILL-${year}-${Math.floor(10000 + Math.random() * 90000)}`;
+          generatedBillNo = finalBillNo;
+        }
+        return { ...j, ...updates, billNo: finalBillNo };
+      })
     );
-    addNotification(`Towing Job ${jobId} updated`, 'info');
+    const updateLabel = updates.jobStatus === 'Completed' ? 'Completed & Billed' : 'Updated';
+    addNotification(`Towing Job ${jobId} ${updateLabel}`, 'info');
+    return generatedBillNo;
   };
 
   // 3. Renewals Actions
@@ -759,8 +732,10 @@ export function AppDataProvider({ children }) {
         updateTowingJob,
         updateClaimDocument,
         addClaimBill,
+        deleteClaimBill,
         addClaimFollowUp,
         updateClaimSettlement,
+        claimsService,
         loans,
         employees,
         leaves,
@@ -771,6 +746,9 @@ export function AppDataProvider({ children }) {
         partners: INSURANCE_PARTNERS,
         products: MOCK_PRODUCTS,
         notifications,
+        applications,
+        setApplications,
+        addApplication,
         addPolicy,
         addClaim,
         updateClaimStage,
